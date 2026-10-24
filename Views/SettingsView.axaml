@@ -1,0 +1,170 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SMCL.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="480"
+             x:Class="SMCL.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+    <Grid>
+        <!-- 【图层 1】：底层背景图片 -->
+        <Image Source="avares://SMCL/Assets/background.png" 
+               Stretch="UniformToFill" 
+               HorizontalAlignment="Center" 
+               VerticalAlignment="Center"/>
+
+        <Grid ColumnDefinitions="250, *">
+
+            <!-- ================= 左侧设置侧边栏 ================= -->
+            <Border Grid.Column="0" Background="#409191D5" BorderBrush="#22FFFFFF" BorderThickness="0,0,1,0">
+                <DockPanel LastChildFill="True">
+                    
+                    <!-- 顶部标题栏 -->
+                    <StackPanel DockPanel.Dock="Top" Margin="15,20,15,20" Spacing="2">
+                        <TextBlock Text="设置" FontSize="20" FontWeight="Bold" Foreground="#2C3E50"/>
+                        <TextBlock Text="Settings" FontSize="11" Foreground="#7F8C8D"/>
+                    </StackPanel>
+
+                    <!-- 底部返回按钮 -->
+                    <Button Command="{Binding BackCommand}"
+                            DockPanel.Dock="Bottom" 
+                            Margin="12" 
+                            Padding="10" 
+                            Background="#EAEAEA" 
+                            CornerRadius="6"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="←" FontSize="14" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center"/>
+                            <TextBlock Text="返回" FontSize="12" FontWeight="SemiBold" Foreground="#333" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- 侧边栏菜单按钮列表 -->
+                    <StackPanel Margin="12,0" Spacing="10">
+                        <Button Command="{Binding SwitchTabCommand}" CommandParameter="GlobalGame" Margin="15,20,15,10"
+                                Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Height="50">
+                            <Grid>
+                                <Image Source="{Binding GlobalGameBtnBg}" Stretch="Fill"/>
+                                <TextBlock Text="全局游戏设置" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="#333"/>
+                            </Grid>
+                        </Button>
+
+                        <Button Command="{Binding SwitchTabCommand}" CommandParameter="Launcher" Margin="15,15,15,10"
+                                Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Height="50">
+                            <Grid>
+                                <Image Source="{Binding LauncherBtnBg}" Stretch="Fill"/>
+                                <TextBlock Text="启动器设置" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="#333"/>
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+
+                </DockPanel>
+            </Border>
+
+            <!-- ================= 右侧设置内容展示区 ================= -->
+            <Border Grid.Column="1" Margin="25" Background="#10000000" CornerRadius="8" Padding="20">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid>
+                        <!-- 1. 全局游戏设置面板 -->
+                        <StackPanel IsVisible="{Binding IsGlobalGameSelected}" Spacing="18">
+                            <TextBlock Text="全局游戏设置" FontSize="18" FontWeight="Black" Foreground="Black"/>
+
+                            <!-- 是否启用版本隔离 -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="是否启用版本隔离" FontSize="13" Foreground="Black"/>
+                                <ComboBox HorizontalAlignment="Stretch" SelectedIndex="{Binding VersionIsolationIndex, Mode=TwoWay}" Height="35">
+                                    <ComboBoxItem Content="是 (建议：各版本独立的 Mod 与存档目录)"/>
+                                    <ComboBoxItem Content="否 (共享相同的 .minecraft 根目录)"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- 是否隐藏被加载器依赖的原版 -->
+                            <CheckBox Content="隐藏被加载器依赖的原版 (让列表更清爽)" 
+                                    IsChecked="{Binding HideInheritedVanilla, Mode=TwoWay}"
+                                    Foreground="Black"
+                                    Margin="0,5"/>
+
+                            <!-- 游戏根目录位置 -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="游戏根目录 (.minecraft)" FontSize="13" Foreground="Black"/>
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBox Grid.Column="0" 
+                                             Text="{Binding MinecraftRoot, Mode=TwoWay}" 
+                                             Height="35" 
+                                             VerticalContentAlignment="Center"/>
+                                    <Button Grid.Column="1" 
+                                            Content="浏览..." 
+                                            Click="OnBrowseMinecraftFolderClick" 
+                                            Margin="8,0,0,0" 
+                                            Height="35" 
+                                            Padding="12,0"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- JVM 附加参数 -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="JVM 附加参数" FontSize="13" Foreground="Black"/>
+                                <TextBox Text="{Binding JvmArgs, Mode=TwoWay}" Watermark="-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions..." Height="35" VerticalContentAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- 最大分配内存设置 -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="最大分配内存 (MB)" FontSize="13" Foreground="Black"/>
+                                <TextBox Text="{Binding MaxMemory, Mode=TwoWay}" 
+                                         Watermark="例如 4096" 
+                                         Height="35" 
+                                         VerticalContentAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 2. 启动器设置面板 -->
+                        <StackPanel IsVisible="{Binding IsLauncherSelected}" Spacing="18">
+                            <TextBlock Text="启动器设置" FontSize="18" FontWeight="Bold" Foreground="Black"/>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="下载镜像源" FontSize="13" Foreground="Black"/>
+                                <ComboBox HorizontalAlignment="Stretch" SelectedIndex="{Binding DownloadSourceIndex, Mode=TwoWay}" Height="35">
+                                    <ComboBoxItem Content="BMCLAPI (推荐中国大陆用户)"/>
+                                    <ComboBoxItem Content="MCBBS 官方镜像源"/>
+                                    <ComboBoxItem Content="Mojang 官方源"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel Spacing="6">
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBlock Grid.Column="0" Text="最大下载并发数" FontSize="13" Foreground="Black"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding MaxDownloadThreads}" FontSize="13" FontWeight="Bold" Foreground="Black"/>
+                                </Grid>
+                                <Slider Minimum="1" Maximum="32" Value="{Binding MaxDownloadThreads, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="游戏启动后行为" FontSize="13" Foreground="Black"/>
+                                <ComboBox HorizontalAlignment="Stretch" SelectedIndex="{Binding GameLaunchBehaviorIndex, Mode=TwoWay}" Height="35">
+                                    <ComboBoxItem Content="保持启动器窗口开启"/>
+                                    <ComboBoxItem Content="游戏启动后自动隐藏启动器"/>
+                                    <ComboBoxItem Content="游戏启动后完全退出启动器"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel Spacing="10">
+                                <CheckBox Content="开启精简日志 (开启后仅显示 Minecraft 游戏运行日志)" 
+                                          IsChecked="{Binding IsSimplifiedLogEnabled, Mode=TwoWay}" 
+                                          Foreground="Black"/>
+                                <CheckBox Content="启动游戏时自动打开控制台日志窗口" 
+                                          IsChecked="{Binding AutoOpenConsole, Mode=TwoWay}" 
+                                          Foreground="Black"/>
+                                <CheckBox Content="开启启动器自动检查更新" 
+                                          IsChecked="{Binding AutoCheckUpdates, Mode=TwoWay}" 
+                                          Foreground="Black"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </Border>
+
+        </Grid>
+    </Grid>
+</UserControl>

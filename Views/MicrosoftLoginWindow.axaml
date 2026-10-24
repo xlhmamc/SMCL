@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SMCL.Views.MicrosoftLoginWindow"
+        Title="微软正版登录"
+        Width="400" Height="320"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="Transparent">
+
+    <Border Background="#F9F9F9" CornerRadius="8" Padding="20">
+        <StackPanel Spacing="15" VerticalAlignment="Center">
+            <TextBlock Text="微软正版授权" FontSize="18" FontWeight="Bold" Foreground="#2C3E50" HorizontalAlignment="Center"/>
+            
+            <TextBlock Text="请在浏览器中打开验证页面，并输入下方代码：" 
+                       FontSize="12" Foreground="#7F8C8D" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+
+            <!-- 设备码展示区 -->
+            <Border Background="#EAEAEA" CornerRadius="6" Padding="12" HorizontalAlignment="Center">
+                <TextBlock x:Name="UserCodeTextBlock" Text="加载中..." FontSize="22" FontWeight="Bold" Foreground="#2980B9" LetterSpacing="2"/>
+            </Border>
+
+            <!-- 操作按钮 -->
+            <Button x:Name="OpenBrowserButton" Content="复制代码并打开验证页面" Click="OnOpenBrowserClick" IsEnabled="False"
+                    Height="36" Background="#27AE60" Foreground="White" HorizontalAlignment="Center" Padding="15,0"/>
+
+            <!-- 状态提示 -->
+            <TextBlock x:Name="StatusTextBlock" Text="正在请求设备码..." FontSize="12" Foreground="#E67E22" HorizontalAlignment="Center"/>
+
+            <Button Content="取消" Click="OnCancelClick" Height="32" Width="80" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+        </StackPanel>
+    </Border>
+</Window>

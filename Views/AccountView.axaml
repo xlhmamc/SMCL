@@ -1,0 +1,138 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SMCL.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="480"
+             x:Class="SMCL.Views.AccountView"
+             x:DataType="vm:AccountViewModel">
+
+    <Grid>
+        <!-- 背景图片 -->
+        <Image Source="avares://SMCL/Assets/background.png" 
+               Stretch="UniformToFill" 
+               HorizontalAlignment="Center" 
+               VerticalAlignment="Center"/>
+
+        <!-- 账户管理卡片主容器 -->
+        <Border Margin="25" Background="#10000000" CornerRadius="8" Padding="20">
+            <Grid RowDefinitions="Auto, Auto, *">
+                
+                <!-- 1. 顶部标题与返回按钮 -->
+                <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,15">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="账户管理" FontSize="20" FontWeight="Bold" Foreground="#2C3E50"/>
+                        <TextBlock Text="Account Management" FontSize="11" Foreground="#7F8C8D"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="1" 
+                            Command="{Binding BackCommand}"
+                            Padding="12,8" 
+                            Background="#EAEAEA" 
+                            CornerRadius="6"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="←" FontSize="14" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center"/>
+                            <TextBlock Text="返回主页" FontSize="12" FontWeight="SemiBold" Foreground="#333" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <!-- 2. 账号添加操作区 -->
+                <Grid Grid.Row="1" ColumnDefinitions="*, *, *" Margin="0,0,0,15">
+                    <Button Grid.Column="0" Command="{Binding AddOfflineAccountCommand}" Margin="0,0,5,0" Height="40" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch">
+                        <Grid>
+                            <Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/>
+                            <TextBlock Text="+ 添加离线账户" FontSize="13" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
+                    <Button Grid.Column="1" 
+                            Click="OnAddLittleSkinClick" 
+                            Margin="5,0,5,0" 
+                            Height="40" 
+                            Background="Transparent" 
+                            Padding="0" 
+                            BorderThickness="0" 
+                            HorizontalAlignment="Stretch">
+                        <Grid>
+                            <Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/>
+                            <TextBlock Text="+ 添加 LittleSkin" FontSize="13" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
+                    <Button Grid.Column="2" 
+                            Click="OnAddMicrosoftClick" 
+                            Margin="5,0,0,0" Height="40" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch">
+                        <Grid>
+                            <Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/>
+                            <TextBlock Text="+ 添加正版账号(未实现)" FontSize="13" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                </Grid>
+
+                <!-- 3. 账户列表区 -->
+                <Border Grid.Row="2" Background="#20FFFFFF" CornerRadius="6" Padding="10">
+                    <ListBox ItemsSource="{Binding Accounts}" Background="Transparent">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AccountItem">
+                                <Grid ColumnDefinitions="Auto, *, Auto" Margin="5">
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    
+                                    <!-- 动态切换展示/修改控件 -->
+                                    <Grid Grid.Column="1" VerticalAlignment="Center">
+                                        <StackPanel IsVisible="{Binding !IsEditing}" Spacing="2">
+                                            <TextBlock Text="{Binding Username}" 
+                                                       FontSize="14" 
+                                                       FontWeight="Bold" 
+                                                       Foreground="Black"
+                                                       DoubleTapped="OnUsernameDoubleTapped"
+                                                       ToolTip.Tip="双击修改名字"/>
+                                            <TextBlock Text="{Binding AccountType}" FontSize="11" Foreground="#555"/>
+                                        </StackPanel>
+
+                                        <TextBox IsVisible="{Binding IsEditing}" 
+                                                 Text="{Binding Username, Mode=TwoWay}" 
+                                                 FontSize="13" 
+                                                 Height="32"
+                                                 VerticalContentAlignment="Center"
+                                                 LostFocus="OnEditingLostFocus"
+                                                 KeyDown="OnEditingKeyDown"/>
+                                    </Grid>
+
+                                    <!-- 右侧操作与标签面板 -->
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <Border Background="#30000000" CornerRadius="4" Padding="6,4" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding AccountType}" FontSize="10" Foreground="Black"/>
+                                        </Border>
+
+                                        <!-- 更换皮肤按钮 -->
+                                        <Button Content="更换皮肤" 
+                                                Click="OnChangeSkinClicked"
+                                                FontSize="11" 
+                                                Padding="8,4" 
+                                                Background="#E0E0E0" 
+                                                Foreground="#333"
+                                                CornerRadius="4"
+                                                VerticalAlignment="Center"/>
+
+                                        <!-- 删除账号按钮 -->
+                                        <Button Content="删除" 
+                                                Command="{Binding DeleteCommand}"
+                                                FontSize="11" 
+                                                Padding="8,4" 
+                                                Background="#FFCDD2" 
+                                                Foreground="#B71C1C"
+                                                CornerRadius="4"
+                                                VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

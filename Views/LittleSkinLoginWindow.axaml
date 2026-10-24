@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SMCL.Views.LittleSkinLoginWindow"
+        Title="LittleSkin 登录"
+        Width="380" Height="300"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="Transparent">
+
+    <Border Background="#F9F9F9" CornerRadius="8" Padding="20">
+        <StackPanel Spacing="12">
+            <TextBlock Text="登录 LittleSkin 账号" FontSize="18" FontWeight="Bold" Foreground="#2C3E50" HorizontalAlignment="Center"/>
+            <TextBlock Text="请输入 LittleSkin 注册邮箱与密码" FontSize="12" Foreground="#7F8C8D" HorizontalAlignment="Center"/>
+
+            <StackPanel Spacing="8" Margin="0,10,0,0">
+                <TextBox x:Name="EmailTextBox" Watermark="邮箱 / 用户名" Height="36" VerticalContentAlignment="Center"/>
+                <TextBox x:Name="PasswordTextBox" Watermark="密码" PasswordChar="*" Height="36" VerticalContentAlignment="Center"/>
+            </StackPanel>
+
+            <!-- 错误信息提示框 -->
+            <TextBlock x:Name="ErrorTextBlock" Foreground="#E74C3C" FontSize="12" HorizontalAlignment="Center" IsVisible="False" TextWrapping="Wrap"/>
+
+            <!-- 底部按钮操作 -->
+            <Grid ColumnDefinitions="*, *" Margin="0,10,0,0">
+                <Button Grid.Column="0" Content="取消" Click="OnCancelClick" Margin="0,0,5,0" Height="36" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
+                <Button Grid.Column="1" x:Name="LoginButton" Content="登录" Click="OnLoginClick" Margin="5,0,0,0" Height="36" Background="#3498DB" Foreground="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

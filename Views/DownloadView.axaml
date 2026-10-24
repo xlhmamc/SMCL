@@ -1,0 +1,505 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SMCL.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:conv="using:SMCL.Converters"
+             xmlns:sys="using:System"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="480"
+             x:Class="SMCL.Views.DownloadView"
+             x:DataType="vm:DownloadViewModel">
+             
+    <Grid>
+        <!-- 【图层 1】：底层背景图片 -->
+        <Image Source="avares://SMCL/Assets/background.png" 
+               Stretch="UniformToFill" 
+               HorizontalAlignment="Center" 
+               VerticalAlignment="Center"/>
+
+        <Grid ColumnDefinitions="250, *">
+
+            <!-- ================= 左侧“资源类型”侧边栏 ================= -->
+            <Border Grid.Column="0" Background="#409191D5" BorderBrush="#22FFFFFF" BorderThickness="0,0,1,0">
+                <DockPanel LastChildFill="True">
+                    
+                    <!-- 顶部标题栏 -->
+                    <StackPanel DockPanel.Dock="Top" Margin="15,20,15,20" Spacing="2">
+                        <TextBlock Text="资源类型" FontSize="20" FontWeight="Bold" Foreground="#2C3E50"/>
+                        <TextBlock Text="Resource Types" FontSize="11" Foreground="#7F8C8D"/>
+                    </StackPanel>
+
+                    <!-- 底部返回按钮 -->
+                    <Button Command="{Binding BackCommand}"
+                            DockPanel.Dock="Bottom" 
+                            Margin="12" 
+                            Padding="10" 
+                            Background="#EAEAEA" 
+                            CornerRadius="6"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="←" FontSize="14" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center"/>
+                            <TextBlock Text="返回" FontSize="12" FontWeight="SemiBold" Foreground="#333" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- 资源切换菜单列表 -->
+                    <StackPanel Margin="12,0" Spacing="10">
+                        <Button Command="{Binding SwitchTabCommand}" CommandParameter="Minecraft" Margin="15,20,15,10"
+                                Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Height="50">
+                            <Grid>
+                                <Image Source="{Binding MinecraftBtnBg}" Stretch="Fill"/>
+                                <TextBlock Text="Minecraft" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="#333"/>
+                            </Grid>
+                        </Button>
+
+                        <Button Command="{Binding SwitchTabCommand}" CommandParameter="Java" Margin="15,15,15,10"
+                                Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Height="50">
+                            <Grid>
+                                <Image Source="{Binding JavaBtnBg}" Stretch="Fill"/>
+                                <TextBlock Text="Java" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="#333"/>
+                            </Grid>
+                        </Button>
+
+                        <Button Command="{Binding SwitchTabCommand}" CommandParameter="Mods" Margin="15,15,15,10"
+                                Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Height="50">
+                            <Grid>
+                                <Image Source="{Binding ModsBtnBg}" Stretch="Fill"/>
+                                <TextBlock Text="模组" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="#333"/>
+                            </Grid>
+                        </Button>
+
+                        <Button Command="{Binding SwitchTabCommand}" CommandParameter="TexturePacks" Margin="15,15,15,10"
+                                Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Height="50">
+                            <Grid>
+                                <Image Source="{Binding TexturePacksBtnBg}" Stretch="Fill"/>
+                                <TextBlock Text="材质包" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="#333"/>
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+
+                </DockPanel>
+            </Border>
+
+            <!-- ================= 右侧展示区 ================= -->
+            <Border Grid.Column="1" Margin="20" Background="#1A000000" CornerRadius="8" Padding="15">
+                <Grid RowDefinitions="*, Auto">
+                    
+                    <!-- 1. 上部资源面板容器 -->
+                    <Grid Grid.Row="0">
+                        
+                        <!-- Minecraft 下载面板 -->
+                        <Grid IsVisible="{Binding IsMinecraftSelected}">
+                            
+                            <!-- 状态 A：选择版本列表 (IsConfiguringVersion = False) -->
+                            <Grid IsVisible="{Binding !IsConfiguringVersion}" RowDefinitions="Auto, *, Auto" RowSpacing="10">
+                                <DockPanel Grid.Row="0">
+                                    <TextBlock Text="Minecraft 官方版本列表" FontSize="16" FontWeight="Bold" Foreground="White" DockPanel.Dock="Left"/>
+                                    <Button Command="{Binding LoadVersionsCommand}" Content="刷新列表" 
+                                            Background="#33FFFFFF" Foreground="White" CornerRadius="4" 
+                                            Padding="8,4" FontSize="12" DockPanel.Dock="Right" HorizontalAlignment="Right"/>
+                                </DockPanel>
+
+                                <Border Grid.Row="1" Background="#20000000" CornerRadius="6" Padding="5">
+                                    <ListBox ItemsSource="{Binding AvailableVersions}" 
+                                             SelectedItem="{Binding SelectedVersion}"
+                                             Background="Transparent">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Padding="8,4">
+                                                    <DockPanel>
+                                                        <TextBlock Text="{Binding Id}" FontSize="15" FontWeight="Bold" Foreground="White" DockPanel.Dock="Left"/>
+                                                        <TextBlock Text="{Binding ReleaseTime}" FontSize="11" Foreground="Black" DockPanel.Dock="Right" VerticalAlignment="Center"/>
+                                                    </DockPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Border>
+
+                                <Button Grid.Row="2" 
+                                        Command="{Binding GoToConfigCommand}" 
+                                        HorizontalAlignment="Right" 
+                                        Background="#2196F3" 
+                                        Foreground="White" 
+                                        Padding="20,8" 
+                                        CornerRadius="6" 
+                                        FontWeight="Bold">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="下一步：配置此版本"/>
+                                        <TextBlock Text="{Binding SelectedVersion.Id, StringFormat='({0})'}"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <!-- 状态 B：版本详细配置面板 (IsConfiguringVersion = True) -->
+                            <ScrollViewer IsVisible="{Binding IsConfiguringVersion}">
+                                <StackPanel Spacing="15">
+                                    <!-- 导航返回 header -->
+                                    <DockPanel>
+                                        <Button Command="{Binding BackToVersionListCommand}" 
+                                                Content="← 返回版本列表" 
+                                                Background="#33FFFFFF" Foreground="White" 
+                                                CornerRadius="4" Padding="10,5" DockPanel.Dock="Left"/>
+                                        <TextBlock Text="版本安装配置" FontSize="18" FontWeight="Bold" Foreground="White" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </DockPanel>
+
+                                    <!-- 1. 基础版本与名称配置 -->
+                                    <Border Background="#20000000" CornerRadius="6" Padding="12">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="游戏实例名称（可选）" FontSize="12" Foreground="#CCC"/>
+                                            <TextBox Text="{Binding CustomInstanceName}" 
+                                                    PlaceholderText="例如:1.20.1-fabric"
+                                                    Background="#90FFFEFE" 
+                                                    Foreground="Black" 
+                                                    CaretBrush="Black"
+                                                    BorderBrush="#66FFFFFF" 
+                                                    CornerRadius="4" 
+                                                    Padding="8,6"/>
+                                            <TextBlock Text="Fabric/原版支持自定义目录名；Forge 由安装器命名。Fabric 名称不能与基础版本（如 1.20.1）相同。"
+                                                       FontSize="10" Foreground="Black" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding InstanceNameError}"
+                                                       IsVisible="{Binding HasInstanceNameError}"
+                                                       FontSize="10" Foreground="#FF6B6B" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 2. 模组加载器 (Mod Loader) 选择卡片 -->
+                                    <Border Background="#20000000" CornerRadius="6" Padding="12">
+                                        <StackPanel Spacing="10">
+                                            <TextBlock Text="选择模组加载器 (Mod Loader)" FontSize="13" FontWeight="Bold" Foreground="White"/>
+                                            
+                                            <UniformGrid Columns="2" Rows="3">
+                                                <!-- Vanilla -->
+                                                <Button Command="{Binding SelectLoaderCommand}" CommandParameter="Vanilla" Margin="4" Padding="10" CornerRadius="6" Background="#30FFFFFF">
+                                                    <StackPanel Spacing="4">
+                                                        <DockPanel>
+                                                            <TextBlock Text="原版 (Vanilla)" FontWeight="Bold" Foreground="White" DockPanel.Dock="Left"/>
+                                                            <TextBlock Text="✓" Foreground="#4CAF50" FontWeight="Bold" DockPanel.Dock="Right" HorizontalAlignment="Right" IsVisible="{Binding IsVanillaSelected}"/>
+                                                        </DockPanel>
+                                                        <TextBlock Text="无修改的官方原生客户端" FontSize="10" Foreground="#AAA"/>
+                                                    </StackPanel>
+                                                </Button>
+
+                                                <!-- Fabric -->
+                                                <Button Command="{Binding SelectLoaderCommand}" CommandParameter="Fabric" Margin="4" Padding="10" CornerRadius="6" Background="#30FFFFFF">
+                                                    <StackPanel Spacing="4">
+                                                        <DockPanel>
+                                                            <TextBlock Text="Fabric" FontWeight="Bold" Foreground="White" DockPanel.Dock="Left"/>
+                                                            <TextBlock Text="✓" Foreground="#4CAF50" FontWeight="Bold" DockPanel.Dock="Right" HorizontalAlignment="Right" IsVisible="{Binding IsFabricSelected}"/>
+                                                        </DockPanel>
+                                                        <TextBlock Text="轻量级、高性能现代化加载器" FontSize="10" Foreground="#AAA"/>
+                                                    </StackPanel>
+                                                </Button>
+
+                                                <!-- Forge -->
+                                                <Button Command="{Binding SelectLoaderCommand}" CommandParameter="Forge" Margin="4" Padding="10" CornerRadius="6" Background="#30FFFFFF">
+                                                    <StackPanel Spacing="4">
+                                                        <DockPanel>
+                                                            <TextBlock Text="Forge" FontWeight="Bold" Foreground="White" DockPanel.Dock="Left"/>
+                                                            <TextBlock Text="✓" Foreground="#4CAF50" FontWeight="Bold" DockPanel.Dock="Right" HorizontalAlignment="Right" IsVisible="{Binding IsForgeSelected}"/>
+                                                        </DockPanel>
+                                                        <TextBlock Text="传统大型模组生态加载器" FontSize="10" Foreground="#AAA"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </UniformGrid>
+
+                                            <!-- 动态显示的加载器版本选择器 -->
+                                            <StackPanel IsVisible="{Binding !IsVanillaSelected}" Spacing="6" Margin="0,5,0,0">
+                                                <TextBlock Text="加载器具体版本" FontSize="12" Foreground="White"/>
+                                                <ComboBox ItemsSource="{Binding LoaderVersions}" 
+                                                        SelectedItem="{Binding SelectedLoaderVersion}" 
+                                                        HorizontalAlignment="Stretch" Height="35" Background="#90000000" Foreground="Black"/>
+                                            </StackPanel>
+
+                                            <!-- Fabric API 自动安装选项 -->
+                                            <CheckBox Content="自动安装 Fabric API 前置模组（自动匹配 Loader 兼容版本）"
+                                                      IsChecked="{Binding AutoInstallFabricApi}"
+                                                      IsVisible="{Binding IsFabricSelected}"
+                                                      Foreground="White"
+                                                      FontSize="12"/>
+
+                                            <TextBlock Text="{Binding SelectedLoader, StringFormat='已选中加载器: {0}'}" FontSize="12" Foreground="#4CAF50" FontWeight="Bold"/>
+                                        </StackPanel>
+                                    </Border>
+                                    
+                                    <!-- 3. 开始安装下载按钮 -->
+                                    <Button Command="{Binding StartDownloadCommand}" 
+                                            HorizontalAlignment="Right" 
+                                            Background="#4CAF50" 
+                                            Foreground="White" 
+                                            Padding="24,10" 
+                                            CornerRadius="6" 
+                                            FontWeight="Bold">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="确认并开始安装"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                        </Grid>
+
+                        <!-- Java 环境下载面板 -->
+                        <StackPanel IsVisible="{Binding IsJavaSelected}" Spacing="10">
+                            <TextBlock Text="Java 运行时下载列表" FontSize="16" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="Java 运行库检索功能待接入..." FontSize="12" Foreground="#AAA"/>
+                        </StackPanel>
+
+                        <!-- 模组下载面板 -->
+                        <Grid IsVisible="{Binding IsModsSelected}" RowDefinitions="Auto, *">
+                            
+                            <!-- ==================== 状态 A：搜索与列表 ==================== -->
+                            <Grid Grid.RowSpan="2" IsVisible="{Binding !IsModDetailVisible}" RowDefinitions="Auto, *, Auto">
+                                
+                                <!-- 1. 搜索栏 -->
+                                <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="0,0,0,15">
+                                    <TextBox Grid.Column="0" 
+                                            Text="{Binding SearchQuery, Mode=TwoWay}" 
+                                            Watermark="搜索 Modrinth 上的模组..." 
+                                            Height="36" 
+                                            VerticalContentAlignment="Center" 
+                                            CornerRadius="6" 
+                                            Background="#33FFFFFF" 
+                                            Foreground="Black" 
+                                            BorderBrush="#55FFFFFF"/>
+                                            
+                                    <!-- 搜索按钮 (Button1.png 蓝色) -->
+                                    <Button Grid.Column="1" 
+                                            Command="{Binding SearchModsCommand}" 
+                                            Margin="10,0,0,0" 
+                                            Padding="0" 
+                                            Background="Transparent" 
+                                            BorderThickness="0"
+                                            Width="100" Height="36"
+                                            Cursor="Hand">
+                                        <Grid>
+                                            <Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/>
+                                            <TextBlock Text="搜索" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="White"/>
+                                        </Grid>
+                                    </Button>
+                                </Grid>
+
+                                <!-- 2. 结果列表 (注意 Border 和 ListBox 的嵌套) -->
+                                <Border Grid.Row="1" Background="#20000000" CornerRadius="6" Padding="5">
+                                    <ListBox ItemsSource="{Binding SearchResults}" Background="Transparent"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <!-- 点击整个卡片进入详情页 -->
+                                                <Button Command="{Binding $parent[ItemsControl].((vm:DownloadViewModel)DataContext).ViewModDetailCommand}" 
+                                                        CommandParameter="{Binding}"
+                                                        Background="Transparent" 
+                                                        BorderThickness="0" 
+                                                        Padding="5"
+                                                        Cursor="Hand"
+                                                        HorizontalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Stretch">
+                                                    <Grid ColumnDefinitions="Auto, *, Auto" Margin="0,5">
+                                                        <Border Grid.Column="0" Width="48" Height="48" CornerRadius="6" ClipToBounds="True" Background="#33FFFFFF">
+                                                            <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                                        </Border>
+
+                                                        <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="2">
+                                                            <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="White" FontSize="14"/>
+                                                            <TextBlock Text="{Binding Description}" Foreground="#CCC" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Text="{Binding Author, StringFormat='作者: {0}'}" Foreground="#888" FontSize="10"/>
+                                                        </StackPanel>
+                                                        
+                                                        <TextBlock Grid.Column="2" Text="查看 →" Foreground="#4CAF50" FontWeight="Bold" VerticalAlignment="Center" Margin="10,0"/>
+                                                    </Grid>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Border>
+
+                                <!-- 3. 底部翻页栏 -->
+                                <Grid Grid.Row="2" ColumnDefinitions="Auto, *, Auto" Margin="0,10,0,0">
+                                    <Button Grid.Column="0" 
+                                            Command="{Binding PrevPageCommand}"
+                                            Width="90" Height="32" Padding="0" Background="Transparent" BorderThickness="0" Cursor="Hand">
+                                        <Grid>
+                                            <Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/>
+                                            <TextBlock Text="上一页" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="White"/>
+                                        </Grid>
+                                    </Button>
+
+                                    <TextBlock Grid.Column="1" 
+                                               Text="{Binding CurrentPage, StringFormat='第 {0} 页'}" 
+                                               Foreground="White" FontWeight="Bold" FontSize="14" 
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                                    <Button Grid.Column="2" 
+                                            Command="{Binding NextPageCommand}"
+                                            Width="90" Height="32" Padding="0" Background="Transparent" BorderThickness="0" Cursor="Hand">
+                                        <Grid>
+                                            <Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/>
+                                            <TextBlock Text="下一页" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="White"/>
+                                        </Grid>
+                                    </Button>
+                                </Grid>
+                            </Grid>
+
+                                <!-- ==================== 状态 B：模组详情页 (IsModDetailVisible = True) ==================== -->
+                                <Grid Grid.RowSpan="2" IsVisible="{Binding IsModDetailVisible}" RowDefinitions="Auto, *, Auto">
+                                    
+                                    <!-- 顶部信息栏 -->
+                                    <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto" Margin="0,0,0,15">
+                                        <Button Grid.Column="0" Command="{Binding CloseModDetailCommand}" 
+                                                Content="← 返回列表" Background="#33FFFFFF" Foreground="#333" 
+                                                CornerRadius="4" Padding="10,5" Margin="0,0,15,0" VerticalAlignment="Center" Cursor="Hand"
+                                                FontWeight="Bold"/>
+                                        
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                                            <Border Width="48" Height="48" CornerRadius="6" ClipToBounds="True" Background="#33FFFFFF">
+                                                <Image Source="{Binding CurrentModDetail.CoverImage}" Stretch="UniformToFill"/>
+                                            </Border>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding CurrentModDetail.Title}" FontSize="18" FontWeight="Bold" Foreground="#222"/>
+                                                <TextBlock Text="{Binding CurrentModDetail.Description}" FontSize="12" Foreground="#555" TextTrimming="CharacterEllipsis" MaxWidth="500" HorizontalAlignment="Left"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+
+                                            <!-- 版本列表区域 -->
+                                            <Border Grid.Row="1" Background="#40FFFFFF" CornerRadius="6" Padding="15" BorderBrush="#33FFFFFF" BorderThickness="1">
+                                                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                                    <ItemsControl ItemsSource="{Binding ModVersionGroups}" HorizontalAlignment="Stretch">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <!-- Expander 加上 HorizontalAlignment="Stretch" 确保撑满 -->
+                                                                <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" 
+                                                                        HorizontalAlignment="Stretch"
+                                                                        HorizontalContentAlignment="Stretch"
+                                                                        Background="#30FFFFFF" CornerRadius="6" Margin="0,0,0,10" Padding="5"
+                                                                        Foreground="#333">
+                                                                    <Expander.Header>
+                                                                        <TextBlock Text="{Binding GameVersion, StringFormat='Minecraft {0}'}" FontWeight="Bold" FontSize="15" Foreground="#111"/>
+                                                                    </Expander.Header>
+                                                                    
+                                                                    <ListBox ItemsSource="{Binding Versions}" 
+                                                                            SelectedItem="{Binding $parent[ItemsControl].((vm:DownloadViewModel)DataContext).SelectedModVersion, Mode=TwoWay}"
+                                                                            Background="Transparent" Margin="0,10,0,0"
+                                                                            BorderThickness="0">
+                                                                        <!-- 【核心修复】强制 ListBoxItem 内容撑满整行 -->
+                                                                        <ListBox.Styles>
+                                                                            <Style Selector="ListBoxItem">
+                                                                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                                                <Setter Property="Padding" Value="12,10"/>
+                                                                                <Setter Property="Margin" Value="0,2"/>
+                                                                                <Setter Property="Background" Value="#30FFFFFF"/>
+                                                                                <Setter Property="CornerRadius" Value="4"/>
+                                                                                <Setter Property="Cursor" Value="Hand"/>
+                                                                            </Style>
+                                                                            <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                                                                                <Setter Property="Background" Value="#50FFFFFF"/>
+                                                                            </Style>
+                                                                            <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                                                                                <Setter Property="Background" Value="#604CAF50"/> <!-- 选中绿色底色 -->
+                                                                                <Setter Property="BorderBrush" Value="#4CAF50"/>
+                                                                                <Setter Property="BorderThickness" Value="1"/>
+                                                                            </Style>
+                                                                            <Style Selector="ListBoxItem:selected TextBlock">
+                                                                                <Setter Property="Foreground" Value="White"/>
+                                                                            </Style>
+                                                                        </ListBox.Styles>
+
+                                                                        <ListBox.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <!-- 这个 Grid 现在会铺满整行 -->
+                                                                                <Grid ColumnDefinitions="*, Auto" VerticalAlignment="Center">
+                                                                                    <StackPanel>
+                                                                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Foreground="#222"/>
+                                                                                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,5,0,0">
+                                                                                            <!-- 给版本类型加个底色框 -->
+                                                                                            <Border Background="#202196F3" CornerRadius="3" Padding="4,1">
+                                                                                                <TextBlock Text="{Binding VersionType}" Foreground="#1565C0" FontSize="11" FontWeight="Bold"/>
+                                                                                            </Border>
+                                                                                            <TextBlock Text="{Binding DatePublished, StringFormat='发布于 {}{0:yyyy-MM-dd}'}" Foreground="#666" FontSize="12" VerticalAlignment="Center"/>
+                                                                                        </StackPanel>
+                                                                                    </StackPanel>
+                                                                                    
+                                                                                    <!-- 右侧显示加载器标签 -->
+                                                                                    <Border Grid.Column="1" Background="#30000000" CornerRadius="4" Padding="8,4" VerticalAlignment="Center">
+                                                                                        <TextBlock Text="{Binding Loaders[0]}" Foreground="#555" FontSize="12" FontWeight="Bold"/>
+                                                                                    </Border>
+                                                                                </Grid>
+                                                                            </DataTemplate>
+                                                                        </ListBox.ItemTemplate>
+                                                                    </ListBox>
+                                                                </Expander>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </ScrollViewer>
+                                            </Border>
+
+                                    <!-- 底部操作栏 -->
+                                    <Grid Grid.Row="2" Margin="0,15,0,0" ColumnDefinitions="*, Auto">
+                                        <!-- 显示当前选中的信息 -->
+                                        <TextBlock Text="{Binding SelectedModVersion.Name, StringFormat='已选中: {0}'}" Foreground="#333" FontWeight="Bold" VerticalAlignment="Center" FontSize="14"/>
+                                        
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="15">
+                                            <Button Content="取消" Command="{Binding CloseModDetailCommand}" 
+                                                    Background="#33FFFFFF" Foreground="#333" Padding="15,8" CornerRadius="6" Cursor="Hand" FontWeight="Bold"/>
+                                            
+                                            <!-- 安装按钮：放大尺寸 -->
+                                            <Button Command="{Binding InstallSelectedModCommand}" 
+                                                    IsEnabled="{Binding SelectedModVersion, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                    Width="160" Height="45" Padding="0" Background="Transparent" BorderThickness="0" Cursor="Hand">
+                                                <Grid>
+                                                    <Image Source="avares://SMCL/Assets/Button2.png" Stretch="Fill"/>
+                                                    <TextBlock Text="安装到实例" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" FontSize="15" Foreground="#333"/>
+                                                </Grid>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                        </Grid>
+
+                        <!-- 材质包下载面板 -->
+                        <StackPanel IsVisible="{Binding IsTexturePacksSelected}" Spacing="10">
+                            <TextBlock Text="材质包列表" FontSize="16" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="材质包检索功能待接入..." FontSize="12" Foreground="#AAA"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- 2. 右侧底部：下载进度条面板（正在下载时自动显示） -->
+                    <Border Grid.Row="1" 
+                            Margin="0,12,0,0" 
+                            Padding="12,10" 
+                            Background="#60000000" 
+                            CornerRadius="6" 
+                            IsVisible="{Binding IsDownloading}">
+                        <StackPanel Spacing="6">
+                            <DockPanel>
+                                <TextBlock Text="{Binding StatusText}" 
+                                           FontSize="12" 
+                                           Foreground="White" 
+                                           DockPanel.Dock="Left" 
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding DownloadProgress, StringFormat='{}{0:F0}%'}" 
+                                           FontSize="12" 
+                                           FontWeight="Bold" 
+                                           Foreground="#4CAF50" 
+                                           DockPanel.Dock="Right" 
+                                           HorizontalAlignment="Right"/>
+                            </DockPanel>
+
+                            <ProgressBar Height="6" 
+                                         Minimum="0" 
+                                         Maximum="100" 
+                                         Value="{Binding DownloadProgress}" 
+                                         CornerRadius="3" 
+                                         Foreground="#4CAF50" 
+                                         Background="#33FFFFFF"/>
+                        </StackPanel>
+                    </Border>
+
+                </Grid>
+            </Border>
+
+        </Grid>
+    </Grid>
+</UserControl>

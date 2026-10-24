@@ -1,0 +1,181 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SMCL.ViewModels"
+        xmlns:models="using:SMCL.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="480"
+        x:Class="SMCL.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="SMCL Minecraft Launcher">
+
+    <Design.DataContext>
+        <vm:MainViewModel />
+    </Design.DataContext>
+
+    <Grid>
+        <!-- 【底层】：主页原本布局 -->
+        <Grid>
+            <!-- 背景图片 -->
+            <Image Source="avares://SMCL/Assets/background.png" 
+                   Stretch="UniformToFill" 
+                   HorizontalAlignment="Center" 
+                   VerticalAlignment="Center"/>
+
+            <Grid ColumnDefinitions="250, *">
+                <!-- 左侧主侧边栏 -->
+                <Border Grid.Column="0" Background="#409191D5" BorderBrush="#22FFFFFF" BorderThickness="0,0,1,0">
+                    <DockPanel LastChildFill="True">
+                        <!-- 顶部 Logo -->
+                        <StackPanel DockPanel.Dock="Top" Margin="15,20,15,20" Orientation="Horizontal" Spacing="10">
+                            <Image Source="/Assets/Lobby_Icon_Work.png" Width="28" Height="28" VerticalAlignment="Center"/>
+                            <StackPanel Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="SMCL" FontSize="20" FontWeight="Bold" Foreground="#2C3E50"/>
+                                <TextBlock Text="Schale Minecraft Launcher" FontSize="11" Foreground="#7F8C8D"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 菜单导航按钮 -->
+                        <StackPanel Margin="12,0" Spacing="10">
+                            <!-- 1. 主页 -->
+                            <Button Command="{Binding NavigateHomeCommand}" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Margin="15,15,15,10" Height="50" >
+                                <Grid>
+                                    <Image Source="/Assets/Button2.png" Stretch="Fill"/>
+                                    <TextBlock Text="主页" FontSize="20" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Black" Foreground="#333"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- 2. 下载 -->
+                            <Button Command="{Binding NavigateDownloadCommand}" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Margin="15,15,15,10" Height="50">
+                                <Grid>
+                                    <Image Source="/Assets/Button1.png" Stretch="Fill"/>
+                                    <TextBlock Text="下载" FontSize="20" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Black" Foreground="#333"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- 3. 设置 -->
+                            <Button Command="{Binding NavigateSettingsCommand}" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Margin="15,15,15,10" Height="50">
+                                <Grid>
+                                    <Image Source="/Assets/Button1.png" Stretch="Fill"/>
+                                    <TextBlock Text="设置" FontSize="20" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Black" Foreground="#333"/>
+                                </Grid>
+                            </Button>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- 右侧主页内容视图 -->
+                <Grid Grid.Column="1" Margin="25" RowDefinitions="Auto, *, Auto">
+                    
+                    <!-- 顶部区域：左边为当前账户按钮，右边为启动项配置 -->
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto, *" Margin="0,0,0,15">
+                        
+                        <!-- 左侧当前账户按钮 -->
+                        <Button Grid.Column="0"
+                                Command="{Binding NavigateAccountCommand}"
+                                Background="Transparent" 
+                                Padding="0" 
+                                BorderThickness="0" 
+                                VerticalAlignment="Top"
+                                Width="280" 
+                                Height="80"
+                                Margin="0,15,0,0">
+                            <Grid>
+                                <Image Source="avares://SMCL/Assets/usr_btn.png" Stretch="Fill"/>
+                                <StackPanel Spacing="2" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="15,0,0,0">
+                                    <!-- 修改这里的 Text 绑定 -->
+                                    <TextBlock Text="{Binding CurrentAccountName}" FontSize="24" FontWeight="Bold" Foreground="#333" Margin="10,0,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+
+                        <!-- 右侧启动项配置区域 -->
+                        <StackPanel Grid.Column="1" Spacing="12" MaxWidth="320" HorizontalAlignment="Right">
+                            <TextBlock Text="启动项配置" FontSize="18" FontWeight="Bold" Foreground="Black"/>
+                            
+                            <!-- 选择游戏版本 -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="选择游戏版本" FontSize="12" Foreground="#676767"/>
+                                <ComboBox HorizontalAlignment="Stretch" 
+                                        PlaceholderText="请选择游戏版本" 
+                                        Width="300"
+                                        ItemsSource="{Binding GameVersions}"
+                                        SelectedItem="{Binding SelectedGameVersion}"/>
+                            </StackPanel>
+
+                            <!-- 选择 Java 版本 + 当前版本高亮提示 -->
+                            <StackPanel Spacing="4">
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBlock Grid.Column="0" Text="选择 Java 版本" FontSize="12" Foreground="Black"/>
+                                    <TextBlock Grid.Column="1" 
+                                            Text="{Binding SelectedJavaVersion}" 
+                                            FontSize="11" 
+                                            FontWeight="Bold" 
+                                            Foreground="#27AE60"/>
+                                </Grid>
+                                
+                                <ComboBox HorizontalAlignment="Stretch" 
+                                        PlaceholderText="手动输入或选择 Java 路径..."
+                                        IsEditable="True"
+                                        ItemsSource="{Binding JavaPaths}"
+                                        Text="{Binding SelectedJavaPath, Mode=TwoWay}"/>
+                            </StackPanel>
+
+                            <Button Command="{Binding NavigateGameSettingsCommand}" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Right" Width="150" Height="40">
+                                <Grid>
+                                    <Image Source="/Assets/Button1.png" Stretch="Fill"/>
+                                    <TextBlock Text="当前游戏设置" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="12" FontWeight="Bold" Foreground="#333"/>
+                                </Grid>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- 中间控制台输出面板 -->
+                    <Border Grid.Row="1" 
+                            Background="#30000000" 
+                            BorderBrush="#44FFFFFF" 
+                            BorderThickness="1" 
+                            CornerRadius="6" 
+                            Padding="10" 
+                            Margin="0,0,0,15">
+                        <!-- 给 ScrollViewer 加上 x:Name="LogScrollViewer" -->
+                        <ScrollViewer x:Name="LogScrollViewer" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding DisplayLogs}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:LogModel">
+                                        <TextBlock Text="{Binding FormattedText}" 
+                                                Foreground="{Binding Color}" 
+                                                FontFamily="Consolas, Monospace, Courier New" 
+                                                FontSize="12" 
+                                                LineHeight="18"
+                                                TextWrapping="Wrap"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- 底部启动按钮 -->
+                    <Button Grid.Row="2" 
+                            Command="{Binding LaunchGameCommand}"
+                            Background="Transparent" 
+                            Padding="0" 
+                            BorderThickness="0" 
+                            Width="175" 
+                            Height="60" 
+                            HorizontalAlignment="Right">
+                        <Grid>
+                            <Image Source="/Assets/Button2.png" Stretch="Fill"/>
+                            <TextBlock Text="启 动" FontSize="25" FontWeight="Bold" Foreground="Black" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- 【顶层】：子页面容器 -->
+        <TransitioningContentControl Content="{Binding CurrentPage}" 
+                                     IsVisible="{Binding CurrentPage, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+    </Grid>
+</Window>
