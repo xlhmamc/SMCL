@@ -120,11 +120,18 @@ namespace SMCL.Services
             if (string.IsNullOrWhiteSpace(url)) return null;
             try
             {
+                // 打印正在下载的图片地址
+                Debug.WriteLine($"[Modrinth Image] Loading: {url}");
                 byte[] data = await _httpClient.GetByteArrayAsync(url);
                 using var ms = new System.IO.MemoryStream(data);
                 return new Avalonia.Media.Imaging.Bitmap(ms);
             }
-            catch { return null; }
+            catch (Exception ex)
+            {
+                // 打印失败原因（如果是因为没开代理导致的超时，这里会显示）
+                Debug.WriteLine($"[Modrinth Image] Failed: {ex.Message}");
+                return null;
+            }
         }
 
         // 4. 通过 VersionId 获取特定版本（用于依赖解析）

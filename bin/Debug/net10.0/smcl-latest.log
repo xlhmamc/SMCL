@@ -1,30 +1,30 @@
-=== SMCL Log Started at 2026/10/25 00:07:10 ===
-[00:07:10] [Launcher.main/INFO] Okaerinasai, Sensei!
-[00:07:10] [Launcher.main/INFO] SMCL has launched!
-[00:07:10] [Launcher.main/INFO] Operating System: Nyarch Linux (Unix 7.2.11.1)
-[00:07:10] [Launcher.main/INFO] System Architecture: x64
-[00:07:10] [Launcher.main/INFO] Current Directory: /home/xlhmamc/Projects/VSCode/SMCL
-[00:07:10] [util.platform.SystemInfo.initialize/INFO] System Info:
-[00:07:10]  - CPU Cores: 20 Threads
-[00:07:10]  - Memory: 31.16 GiB
-[00:07:10] [ui.Controllers.initialize/INFO] Start initializing application
-[00:07:11] [java.JavaManager.searchPotentialJavaExecutables/TRACE] Finished Java lookup, found 7 Java environments
-[00:07:11]  - JDK (27.0.1.0.2): /usr/bin/java
-[00:07:11]  - JDK (27.0.1.0.2): /usr/lib/jvm/default/bin/java
-[00:07:11]  - JDK (11.0.32.1): /usr/lib/jvm/java-11-openjdk/bin/java
-[00:07:11]  - JDK (27.0.1.0.2): /usr/lib/jvm/java-27-openjdk/bin/java
-[00:07:11]  - JDK (27.0.1.0.2): /usr/lib/jvm/default-runtime/bin/java
-[00:07:11]  - JDK (21.0.10): /opt/android-studio/jbr/bin/java
-[00:07:11]  - JDK (21.0.7): /home/xlhmamc/.local/share/hmcl/java/linux-x86_64/mojang-java-runtime-delta/bin/java
-[00:07:11] [game.GameRepository/TRACE] Refreshing Game Repository in /home/xlhmamc/Projects/VSCode/SMCL/bin/Debug/net10.0/.minecraft...
-[00:07:11] [java.JavaManager/INFO] Switched game version to [fabric-loader-0.15.11-1.20.1]. Valid Java range: Java 17 ~ 21 (Recommended: Java 17)
-[00:07:11] [java.JavaManager/INFO]: [VALID] Selected Java (21.0.7) is within supported range (Java 17 ~ 21).
-[00:07:11] [game.GameRepository/INFO] Repository refresh finished, found 5 valid instances
-[00:07:11] [java.JavaManager/INFO] [Java Executable Check] /home/xlhmamc/.local/share/hmcl/java/linux-x86_64/mojang-java-runtime-delta/bin/java:
-[00:07:11] [java.JavaManager/INFO]   > openjdk version "21.0.7" 2025-04-15 LTS
-[00:07:11] [java.JavaManager/INFO]   > OpenJDK Runtime Environment Microsoft-11369942 (build 21.0.7+6-LTS)
-[00:07:11] [java.JavaManager/INFO]   > OpenJDK 64-Bit Server VM Microsoft-11369942 (build 21.0.7+6-LTS, mixed mode)
-[00:07:11] [java.JavaManager/INFO] [Java Executable Check] /home/xlhmamc/.local/share/hmcl/java/linux-x86_64/mojang-java-runtime-delta/bin/java:
-[00:07:11] [java.JavaManager/INFO]   > openjdk version "21.0.7" 2025-04-15 LTS
-[00:07:11] [java.JavaManager/INFO]   > OpenJDK Runtime Environment Microsoft-11369942 (build 21.0.7+6-LTS)
-[00:07:11] [java.JavaManager/INFO]   > OpenJDK 64-Bit Server VM Microsoft-11369942 (build 21.0.7+6-LTS, mixed mode)
+=== SMCL Log Started at 2026/10/28 21:05:56 ===
+[21:05:56] [Launcher.main/INFO] Okaerinasai, Sensei!
+[21:05:56] [Launcher.main/INFO] SMCL has launched!
+[21:05:56] [Launcher.main/INFO] Operating System: Nyarch Linux (Unix 7.2.11.1)
+[21:05:56] [Launcher.main/INFO] System Architecture: x64
+[21:05:56] [Launcher.main/INFO] Current Directory: /home/xlhmamc/Projects/VSCode/SMCL
+[21:05:56] [util.platform.SystemInfo.initialize/INFO] System Info:
+[21:05:56]  - CPU Cores: 20 Threads
+[21:05:56]  - Memory: 31.16 GiB
+[21:05:56] [ui.Controllers.initialize/INFO] Start initializing application
+[21:05:56] [java.JavaManager.searchPotentialJavaExecutables/TRACE] Finished Java lookup, found 7 Java environments
+[21:05:56]  - JDK (27.0.1.0.3): /usr/bin/java
+[21:05:56]  - JDK (27.0.1.0.3): /usr/lib/jvm/default/bin/java
+[21:05:56]  - JDK (11.0.32.1): /usr/lib/jvm/java-11-openjdk/bin/java
+[21:05:56]  - JDK (27.0.1.0.3): /usr/lib/jvm/java-27-openjdk/bin/java
+[21:05:56]  - JDK (27.0.1.0.3): /usr/lib/jvm/default-runtime/bin/java
+[21:05:56]  - JDK (21.0.10): /opt/android-studio/jbr/bin/java
+[21:05:56]  - JDK (21.0.7): /home/xlhmamc/.local/share/hmcl/java/linux-x86_64/mojang-java-runtime-delta/bin/java
+[21:05:56] [game.GameRepository/TRACE] Refreshing Game Repository in /home/xlhmamc/Projects/VSCode/SMCL/bin/Debug/net10.0/.minecraft...
+[21:05:56] [java.JavaManager/INFO] Switched game version to [fabric-loader-0.15.11-1.20.1]. Valid Java range: Java 17 ~ 21 (Recommended: Java 17)
+[21:05:56] [java.JavaManager/INFO]: [VALID] Selected Java (21.0.7) is within supported range (Java 17 ~ 21).
+[21:05:56] [game.GameRepository/INFO] Repository refresh finished, found 5 valid instances
+[21:05:56] [java.JavaManager/INFO] [Java Executable Check] /home/xlhmamc/.local/share/hmcl/java/linux-x86_64/mojang-java-runtime-delta/bin/java:
+[21:05:56] [java.JavaManager/INFO]   > openjdk version "21.0.7" 2025-04-15 LTS
+[21:05:56] [java.JavaManager/INFO]   > OpenJDK Runtime Environment Microsoft-11369942 (build 21.0.7+6-LTS)
+[21:05:56] [java.JavaManager/INFO]   > OpenJDK 64-Bit Server VM Microsoft-11369942 (build 21.0.7+6-LTS, mixed mode)
+[21:05:56] [java.JavaManager/INFO] [Java Executable Check] /home/xlhmamc/.local/share/hmcl/java/linux-x86_64/mojang-java-runtime-delta/bin/java:
+[21:05:56] [java.JavaManager/INFO]   > openjdk version "21.0.7" 2025-04-15 LTS
+[21:05:56] [java.JavaManager/INFO]   > OpenJDK Runtime Environment Microsoft-11369942 (build 21.0.7+6-LTS)
+[21:05:56] [java.JavaManager/INFO]   > OpenJDK 64-Bit Server VM Microsoft-11369942 (build 21.0.7+6-LTS, mixed mode)

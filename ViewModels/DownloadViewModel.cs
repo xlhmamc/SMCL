@@ -90,6 +90,12 @@ namespace SMCL.ViewModels
         [NotifyPropertyChangedFor(nameof(HasInstanceNameError))]
         private string? _instanceNameError;
 
+        [ObservableProperty]
+        private ObservableCollection<string> _availableInstances = new();
+
+        [ObservableProperty]
+        private string? _selectedDownloadInstance;
+
         // ================== 翻页功能属性 ==================
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(PrevPageCommand))]
@@ -111,6 +117,16 @@ namespace SMCL.ViewModels
         partial void OnCustomInstanceNameChanged(string value)
         {
             if (HasInstanceNameError) InstanceNameError = null;
+        }
+
+        partial void OnSelectedDownloadInstanceChanged(string? value)
+        {
+            if (string.IsNullOrEmpty(value)) return;
+            
+            if (_isSearchMode)
+                _ = SearchModsAsync();
+            else
+                _ = LoadRecommendedModsAsync();
         }
 
         private string _selectedLoader = "Vanilla";
@@ -157,6 +173,7 @@ namespace SMCL.ViewModels
             UpdateTabStyles();
             _ = LoadVersionsAsync();
             _ = LoadRecommendedModsAsync();
+            LoadAvailableInstances();
         }
 
         private void InitBitmaps()
@@ -185,6 +202,28 @@ namespace SMCL.ViewModels
             JavaBtnBg = IsJavaSelected ? _btnBgActive : _btnBgNormal;
             ModsBtnBg = IsModsSelected ? _btnBgActive : _btnBgNormal;
             TexturePacksBtnBg = IsTexturePacksSelected ? _btnBgActive : _btnBgNormal;
+        }
+
+        private void LoadAvailableInstances()
+        {
+            try
+            {
+                var config = ConfigService.Load();
+                string gameDir = string.IsNullOrWhiteSpace(config.MinecraftRoot)
+                    ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".minecraft")
+                    : config.MinecraftRoot;
+                
+                var versions = GameScannerService.ScanGameVersions(gameDir);
+                AvailableInstances.Clear();
+                foreach(var v in versions) AvailableInstances.Add(v);
+                
+                // 默认选中主界面正在使用的版本
+                if (versions.Contains(config.SelectedGameVersion))
+                    SelectedDownloadInstance = config.SelectedGameVersion;
+                else if (versions.Count > 0)
+                    SelectedDownloadInstance = versions[0];
+            }
+            catch { }
         }
 
         [RelayCommand]
@@ -628,11 +667,11 @@ namespace SMCL.ViewModels
         {
             if (IsSearchingMods) return;
             
-            var config = ConfigService.Load();
-            string selectedVer = config.SelectedGameVersion ?? "";
+            // 核心修改：使用下载页选中的实例
+            string selectedVer = SelectedDownloadInstance ?? "";
             if (string.IsNullOrEmpty(selectedVer)) 
             {
-                StatusText = "请先在主界面选择一个游戏版本！";
+                StatusText = "请先在顶部选择一个游戏实例！";
                 return;
             }
 
@@ -641,7 +680,13 @@ namespace SMCL.ViewModels
             if (selectedVer.Contains("fabric", StringComparison.OrdinalIgnoreCase)) loader = "fabric";
             else if (selectedVer.Contains("forge", StringComparison.OrdinalIgnoreCase)) loader = "forge";
 
-            // 记录当前页码，防止并发点击
+            if (loader == "Vanilla")
+            {
+                StatusText = "提示：当前选中的是原版，无法加载模组。请选择带 Fabric/Forge 的实例。";
+                SearchResults.Clear();
+                return;
+            }
+
             CurrentPage = page;
             IsSearchingMods = true;
             StatusText = $"正在获取第 {page} 页...";
@@ -649,10 +694,7 @@ namespace SMCL.ViewModels
             int offset = (page - 1) * 20;
             var response = await _modrinthService.SearchAsync(query, mcVersion, loader, offset, 20);
 
-            // 【核心修复】如果 API 错误或返回空，强制将总页数设为 1，防止页码乱跳
             TotalPages = Math.Max(1, (int)Math.Ceiling((double)response.TotalHits / 20));
-            
-            // 如果请求的页码超出了总页数（比如断网导致），强制回到第一页
             if (CurrentPage > TotalPages) CurrentPage = 1;
 
             await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -661,21 +703,42 @@ namespace SMCL.ViewModels
                 foreach (var mod in response.Results) SearchResults.Add(mod);
                 
                 StatusText = response.TotalHits > 0 
-                    ? $"共找到 {response.TotalHits} 个模组，当前第 {CurrentPage}/{TotalPages} 页" 
+                    ? $"共找到 {response.TotalHits} 个模组，第 {CurrentPage}/{TotalPages} 页" 
                     : "未找到相关模组";
             });
-
+            
             foreach (var mod in response.Results)
             {
+                Console.WriteLine($"[图片加载] 尝试加载: {mod.Title}, 链接: '{mod.IconUrl}'");
+                
+                if (string.IsNullOrWhiteSpace(mod.IconUrl)) 
+                {
+                    Console.WriteLine($"[图片加载] 跳过 {mod.Title}，因为没有图标链接。");
+                    continue;
+                }
+
                 _ = Task.Run(async () =>
                 {
-                    var bmp = await _modrinthService.DownloadImageAsync(mod.IconUrl);
-                    if (bmp != null)
-                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => mod.CoverImage = bmp);
+                    try 
+                    {
+                        var bmp = await _modrinthService.DownloadImageAsync(mod.IconUrl);
+                        if (bmp != null)
+                        {
+                            Console.WriteLine($"[图片加载] 成功: {mod.Title}");
+                            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => mod.CoverImage = bmp);
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[图片加载] 失败(返回Null): {mod.Title}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[图片加载] 异常 {mod.Title}: {ex.Message}");
+                    }
                 });
             }
-
-            // 确保 UI 线程通知按钮状态更新
+            
             await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
             {
                 IsSearchingMods = false;
