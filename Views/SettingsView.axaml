@@ -106,14 +106,14 @@
                             <!-- JVM 附加参数 -->
                             <StackPanel Spacing="6">
                                 <TextBlock Text="JVM 附加参数" FontSize="13" Foreground="Black"/>
-                                <TextBox Text="{Binding JvmArgs, Mode=TwoWay}" Watermark="-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions..." Height="35" VerticalContentAlignment="Center"/>
+                                <TextBox Text="{Binding JvmArgs, Mode=TwoWay}" PlaceholderText="-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions..." Height="35" VerticalContentAlignment="Center"/>
                             </StackPanel>
 
                             <!-- 最大分配内存设置 -->
                             <StackPanel Spacing="6">
                                 <TextBlock Text="最大分配内存 (MB)" FontSize="13" Foreground="Black"/>
                                 <TextBox Text="{Binding MaxMemory, Mode=TwoWay}" 
-                                         Watermark="例如 4096" 
+                                         PlaceholderText="例如 4096" 
                                          Height="35" 
                                          VerticalContentAlignment="Center"/>
                             </StackPanel>

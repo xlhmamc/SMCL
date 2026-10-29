@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using SMCL.Models;
 using SMCL.ViewModels;
 
 namespace SMCL.Views
@@ -36,6 +37,10 @@ namespace SMCL.Views
                 {
                     vm.AddModFile(file.Path.LocalPath);
                 }
+            }
+            if (sender is ToggleSwitch toggle && toggle.DataContext is ModModel mod && DataContext is GameSettingsViewModel vm1)
+            {
+                vm1.ToggleModState(mod);
             }
         }
     }

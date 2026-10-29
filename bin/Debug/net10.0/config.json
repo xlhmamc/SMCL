@@ -1,6 +1,6 @@
 {
   "MinecraftRoot": "/home/xlhmamc/Projects/VSCode/SMCL/bin/Debug/net10.0/.minecraft",
-  "SelectedGameVersion": "fabric-loader-0.15.11-1.20.1",
+  "SelectedGameVersion": "1.20.1-fabric",
   "SelectedJavaPath": "/home/xlhmamc/.local/share/hmcl/java/linux-x86_64/mojang-java-runtime-delta/bin/java",
   "MaxMemory": "8192",
   "IsSimplifiedLogEnabled": false,
@@ -18,14 +18,6 @@
       "Uuid": "0feb8215425f4a7ca03475179c14de1f",
       "AccessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ijlvc3R5V1VzLXBPempUdmNkQXB2Sjl5Qk1NMF9DNUlkYnlPc3RsUmlaWE0ifQ.eyJqdGkiOiIzZGQzODY0ZS00OGY5LTRmYTctYTUwOS03ZGQyNzdjM2E3MTciLCJzdWIiOiI0MjU1NDgiLCJhdWQiOiI4NjUiLCJuYmYiOjE3ODk4NzAxNzQsImV4cCI6MTc5MDEyOTM3NCwic2NvcGVzIjpbIllnZ2RyYXNpbC5QbGF5ZXJQcm9maWxlcy5TZWxlY3QiLCJZZ2dkcmFzaWwuU2VydmVyLkpvaW4iXSwic2VsZWN0ZWRQcm9maWxlIjoiMGZlYjgyMTU0MjVmNGE3Y2EwMzQ3NTE3OWMxNGRlMWYiLCJpYXQiOjE3ODk4NzAxNzQsImlzcyI6IllnZ2RyYXNpbCBDb25uZWN0In0.N9MNBd-CP2RDTp0qkV_pBRHyv28X1DNmsQLXurhaVRRTsqpNC7oHKFSaWrs3EYdFod-zrmX8Pn1GVpr0gd4IPLjmf2vAytiVJlqjbyRYnMZ6XxbVmJamt478iQPuriChYslYLY5sWCShgZVWp5h5Q11s6sqhFxNLLFU5H1kKIsLPFvLxA4tbxoXYmDmvZcpyaNzcPonoh493BoF8aXccHicZIb5iVYRnqCBPXioz7n8tL2o__vRo1f99e-QfyR9s52VgWTDCxl3YJFTLQLya-CNvm5BpA6INoCJuOFjQGwx1_mmGhgrE9S3M-bvCQbsoFCVXnuqfPoTq29RewGFhM9LXfsQBovsZtzavYkWexKx3PuVnqdM5mFTnpRNnFebEupGNBDGO-KwnWJCBpyZ-BVtBAzKRe7viJS-jackEFX_VBSHS4UczSlaSXGN0gCP7JT5a7m4lGLgvKao1jEqENP8Xl5FygE9UwEFGW0FIJ8wVc_k5krCHr-mjvadK6YBiWrCySz68uYC7N4v5c_LbZ6XKG_iA1pD4qDp5v68s3FS4lzaF8FOywtsctrWid1jc0z3odzlPRgsMbQgrfTHOT7-4hzvs1_bv9BORasyhIDTAViWKR9z2SZAt__M7dG9iwcV_s-bdnoVuhVOmh5FliVXHMOxvOyRL11gcrNEaqw4",
       "AccountType": "LittleSkin",
-      "YggdrasilServerUrl": null,
-      "SkinPath": null
-    },
-    {
-      "Username": "Steve_380",
-      "Uuid": "74e89ec6e28add3886729f276c0afc0e",
-      "AccessToken": "0",
-      "AccountType": "\u79BB\u7EBF\u8D26\u6237",
       "YggdrasilServerUrl": null,
       "SkinPath": null
     }

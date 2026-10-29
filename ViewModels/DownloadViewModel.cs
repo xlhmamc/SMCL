@@ -218,7 +218,7 @@ namespace SMCL.ViewModels
                 foreach(var v in versions) AvailableInstances.Add(v);
                 
                 // 默认选中主界面正在使用的版本
-                if (versions.Contains(config.SelectedGameVersion))
+                if (!string.IsNullOrEmpty(config.SelectedGameVersion) && versions.Contains(config.SelectedGameVersion))
                     SelectedDownloadInstance = config.SelectedGameVersion;
                 else if (versions.Count > 0)
                     SelectedDownloadInstance = versions[0];
@@ -813,6 +813,7 @@ namespace SMCL.ViewModels
         {
             if (SelectedModVersion == null || CurrentModDetail == null) return;
 
+            // ... 前面的代码（配置路径、清理旧版本等）保持不变 ...
             var config = ConfigService.Load();
             string selectedVer = config.SelectedGameVersion ?? "";
             if (string.IsNullOrEmpty(selectedVer)) return;
@@ -838,7 +839,7 @@ namespace SMCL.ViewModels
                 string mcVersion = GetBaseVersionFromJson(selectedVer) ?? selectedVer;
                 string loader = selectedVer.Contains("forge", StringComparison.OrdinalIgnoreCase) ? "forge" : "fabric";
 
-                // 清理旧版本
+                // 1. 清理该模组的其他旧版本 (保持你原来的逻辑)
                 var allHistoricalFileNames = ModVersionGroups
                     .SelectMany(g => g.Versions)
                     .Select(v => v.FileName)
@@ -859,9 +860,21 @@ namespace SMCL.ViewModels
                     }
                 }
 
+                // 2. 核心优化：扫描本地已存在的依赖，防止重复下载前置模组
+                StatusText = "Checking installed dependencies...";
+                var installedProjectIds = await _modrinthService.GetLocalProjectIdsAsync(modsDir);
+                
+                // 从已安装列表中移除主模组本身，因为用户明确想要安装/更新这个模组
+                if (installedProjectIds.Contains(SelectedModVersion.Id)) 
+                {
+                    // 注意：这里的 ProjectId 应该是 CurrentModDetail.ProjectId，而不是 SelectedModVersion.Id
+                    installedProjectIds.Remove(CurrentModDetail.ProjectId);
+                }
+
                 var downloadedProjectIds = new HashSet<string>();
 
-                await DownloadModAndDependenciesAsync(SelectedModVersion, modsDir, mcVersion, loader, downloadedProjectIds);
+                // 3. 递归下载主模组及其依赖（传入本地已安装列表）
+                await DownloadModAndDependenciesAsync(SelectedModVersion, modsDir, mcVersion, loader, downloadedProjectIds, installedProjectIds);
 
                 await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
                 {
@@ -886,13 +899,20 @@ namespace SMCL.ViewModels
             }
         }
 
-        private async Task DownloadModAndDependenciesAsync(ModrinthVersion modVersion, string modsDir, string mcVersion, string loader, HashSet<string> downloadedIds)
+        private async Task DownloadModAndDependenciesAsync(
+            ModrinthVersion modVersion, 
+            string modsDir, 
+            string mcVersion, 
+            string loader, 
+            HashSet<string> downloadedIds,
+            HashSet<string> installedProjectIds) // 新增参数
         {
             if (downloadedIds.Contains(modVersion.Id)) return;
             downloadedIds.Add(modVersion.Id);
 
             string localPath = System.IO.Path.Combine(modsDir, modVersion.FileName);
 
+            // 如果文件已存在，直接跳过
             if (System.IO.File.Exists(localPath))
             {
                 await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -903,6 +923,7 @@ namespace SMCL.ViewModels
             }
             else
             {
+                // 执行下载
                 await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     StatusText = $"Downloading {modVersion.Name} ({modVersion.VersionNumber})...";
@@ -917,7 +938,6 @@ namespace SMCL.ViewModels
 
                 long totalBytes = response.Content.Headers.ContentLength ?? -1L;
                 using var contentStream = await response.Content.ReadAsStreamAsync();
-                
                 using var fileStream = new System.IO.FileStream(localPath, System.IO.FileMode.Create, System.IO.FileAccess.Write, System.IO.FileShare.None, 8192, true);
 
                 byte[] buffer = new byte[8192];
@@ -932,17 +952,26 @@ namespace SMCL.ViewModels
                     if (totalBytes > 0)
                     {
                         double progress = (double)totalRead / totalBytes * 100;
-                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-                        {
-                            DownloadProgress = progress;
-                        });
+                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => DownloadProgress = progress);
                     }
                 }
             }
 
+            // 解析 required（必须的）依赖
             var requiredDeps = modVersion.Dependencies.Where(d => d.DependencyType == "required").ToList();
             foreach (var dep in requiredDeps)
             {
+                // 【核心修复】如果本地已经安装了这个 ProjectId，就不下载依赖了
+                if (!string.IsNullOrEmpty(dep.ProjectId) && installedProjectIds.Contains(dep.ProjectId))
+                {
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        StatusText = $"Skipped prerequisite: {dep.ProjectId}, already installed locally.";
+                        Debug.WriteLine($"[ModManager] Skipped prerequisite {dep.ProjectId}, already installed locally.");
+                    });
+                    continue;
+                }
+
                 ModrinthVersion? depVersion = null;
                 
                 if (!string.IsNullOrEmpty(dep.VersionId))
@@ -956,7 +985,8 @@ namespace SMCL.ViewModels
 
                 if (depVersion != null)
                 {
-                    await DownloadModAndDependenciesAsync(depVersion, modsDir, mcVersion, loader, downloadedIds);
+                    // 递归下载依赖的依赖
+                    await DownloadModAndDependenciesAsync(depVersion, modsDir, mcVersion, loader, downloadedIds, installedProjectIds);
                 }
             }
         }

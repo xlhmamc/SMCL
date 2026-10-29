@@ -8,72 +8,49 @@
              x:Class="SMCL.Views.GameSettingsView"
              x:DataType="vm:GameSettingsViewModel">
     <Grid>
-        <!-- 【图层 1】：底层背景图片 -->
-        <Image Source="avares://SMCL/Assets/background.png" 
-               Stretch="UniformToFill" 
-               HorizontalAlignment="Center" 
-               VerticalAlignment="Center"/>
+        <Image Source="avares://SMCL/Assets/background.png" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
         <Grid ColumnDefinitions="250, *">
-
-            <!-- ================= 左侧设置侧边栏 ================= -->
+            <!-- 左侧侧边栏 -->
             <Border Grid.Column="0" Background="#409191D5" BorderBrush="#22FFFFFF" BorderThickness="0,0,1,0">
                 <DockPanel LastChildFill="True">
-                    
-                    <!-- 顶部标题栏 -->
                     <StackPanel DockPanel.Dock="Top" Margin="15,20,15,20" Spacing="2">
                         <TextBlock Text="当前游戏设置" FontSize="20" FontWeight="Bold" Foreground="#2C3E50"/>
                         <TextBlock Text="{Binding InstanceName}" FontSize="11" Foreground="#7F8C8D" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
 
-                    <!-- 底部返回按钮 -->
-                    <Button Command="{Binding BackCommand}"
-                            DockPanel.Dock="Bottom" 
-                            Margin="12" 
-                            Padding="10" 
-                            Background="#EAEAEA" 
-                            CornerRadius="6"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Left">
+                    <Button Command="{Binding BackCommand}" DockPanel.Dock="Bottom" Margin="12" Padding="10" Background="#EAEAEA" CornerRadius="6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="←" FontSize="14" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center"/>
                             <TextBlock Text="返回" FontSize="12" FontWeight="SemiBold" Foreground="#333" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
-                    <!-- 侧边栏菜单按钮列表 -->
                     <StackPanel Margin="12,0" Spacing="10">
-                        <!-- 1. 游戏配置 -->
-                        <Button Command="{Binding SwitchTabCommand}" CommandParameter="GameConfig" Margin="15,20,15,10"
-                                Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Height="50">
+                        <Button Command="{Binding SwitchTabCommand}" CommandParameter="GameConfig" Margin="15,20,15,10" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Height="50">
                             <Grid>
                                 <Image Source="{Binding GameConfigBtnBg}" Stretch="Fill"/>
                                 <TextBlock Text="游戏配置" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="#333"/>
                             </Grid>
                         </Button>
-
-                        <!-- 2. 模组管理 -->
-                        <Button Command="{Binding SwitchTabCommand}" CommandParameter="ModManager" Margin="15,15,15,10"
-                                Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Height="50">
+                        <Button Command="{Binding SwitchTabCommand}" CommandParameter="ModManager" Margin="15,15,15,10" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Height="50">
                             <Grid>
                                 <Image Source="{Binding ModManagerBtnBg}" Stretch="Fill"/>
                                 <TextBlock Text="模组管理" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" Foreground="#333"/>
                             </Grid>
                         </Button>
                     </StackPanel>
-
                 </DockPanel>
             </Border>
 
-            <!-- ================= 右侧设置内容展示区 ================= -->
+            <!-- 右侧内容区 -->
             <Border Grid.Column="1" Margin="25" Background="#10000000" CornerRadius="8" Padding="20">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <Grid>
-                        <!-- 1. 游戏配置面板 -->
+                        <!-- 1. 游戏配置 -->
                         <StackPanel IsVisible="{Binding IsGameConfigSelected}" Spacing="18">
                             <TextBlock Text="游戏配置" FontSize="18" FontWeight="Black" Foreground="Black"/>
-
-                            <!-- 全局继承开关 -->
+                            
                             <Border Background="#20FFFFFF" CornerRadius="6" Padding="12">
                                 <DockPanel LastChildFill="False">
                                     <StackPanel DockPanel.Dock="Left" Spacing="2">
@@ -84,71 +61,56 @@
                                 </DockPanel>
                             </Border>
 
-                            <!-- 版本快捷目录管理 (按钮使用 Button1.png 材质) -->
+                            <!-- 快捷目录 (Button1 材质) -->
                             <StackPanel Spacing="6">
                                 <TextBlock Text="版本快捷目录管理" FontSize="13" Foreground="Black"/>
                                 <Grid ColumnDefinitions="*, *, *">
-                                    <Button Grid.Column="0" Command="{Binding OpenFolderCommand}" CommandParameter="Root" Margin="0,0,4,0" Height="40" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch">
-                                        <Grid>
-                                            <Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/>
-                                            <TextBlock Text="📁 打开版本目录" FontSize="12" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        </Grid>
+                                    <Button Grid.Column="0" Command="{Binding OpenFolderCommand}" CommandParameter="Root" Margin="0,0,4,0" Height="40" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Cursor="Hand">
+                                        <Grid><Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/><TextBlock Text="📁 打开版本目录" FontSize="12" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center" HorizontalAlignment="Center"/></Grid>
                                     </Button>
-                                    <Button Grid.Column="1" Command="{Binding OpenFolderCommand}" CommandParameter="Mods" Margin="2,0,2,0" Height="40" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch">
-                                        <Grid>
-                                            <Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/>
-                                            <TextBlock Text="🧩 打开 Mods 目录" FontSize="12" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        </Grid>
+                                    <Button Grid.Column="1" Command="{Binding OpenFolderCommand}" CommandParameter="Mods" Margin="2,0,2,0" Height="40" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Cursor="Hand">
+                                        <Grid><Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/><TextBlock Text="🧩 打开 Mods 目录" FontSize="12" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center" HorizontalAlignment="Center"/></Grid>
                                     </Button>
-                                    <Button Grid.Column="2" Command="{Binding OpenFolderCommand}" CommandParameter="Saves" Margin="4,0,0,0" Height="40" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch">
-                                        <Grid>
-                                            <Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/>
-                                            <TextBlock Text="🗺️ 打开存档目录" FontSize="12" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        </Grid>
+                                    <Button Grid.Column="2" Command="{Binding OpenFolderCommand}" CommandParameter="Saves" Margin="4,0,0,0" Height="40" Background="Transparent" Padding="0" BorderThickness="0" HorizontalAlignment="Stretch" Cursor="Hand">
+                                        <Grid><Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/><TextBlock Text="🗺️ 打开存档目录" FontSize="12" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center" HorizontalAlignment="Center"/></Grid>
                                     </Button>
                                 </Grid>
                             </StackPanel>
 
-                            <!-- 独立分配内存（改为输入框） -->
+                            <!-- 内存与参数输入 -->
                             <StackPanel Spacing="6" IsEnabled="{Binding UseCustomSettings}">
                                 <TextBlock Text="最大分配内存 (MB)" FontSize="13" Foreground="Black"/>
-                                <TextBox Text="{Binding CustomMemory}" Watermark="请输入内存大小 (例如 4096)..." Height="35" VerticalContentAlignment="Center"/>
+                                <TextBox Text="{Binding CustomMemory}" PlaceholderText="例如 4096" Height="35" VerticalContentAlignment="Center"/>
                             </StackPanel>
-
-                            <!-- 独立 JVM 参数 -->
                             <StackPanel Spacing="6" IsEnabled="{Binding UseCustomSettings}">
                                 <TextBlock Text="特定 JVM 启动参数" FontSize="13" Foreground="Black"/>
-                                <TextBox Text="{Binding CustomJvmArgs, Mode=TwoWay}" 
-                                        Watermark="-XX:+UseG1GC -XX:HeapDumpPath=..." 
-                                        Height="35" 
-                                        VerticalContentAlignment="Center"/>
+                                <TextBox Text="{Binding CustomJvmArgs}" PlaceholderText="-XX:+UseG1GC..." Height="35" VerticalContentAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Spacing="6" IsEnabled="{Binding UseCustomSettings}">
+                                <TextBlock Text="自定义 Minecraft 启动参数" FontSize="13" Foreground="Black"/>
+                                <TextBox Text="{Binding CustomMcArgs}" PlaceholderText="--demo..." Height="35" VerticalContentAlignment="Center"/>
                             </StackPanel>
 
-                            <!-- 自定义 Minecraft 启动参数 -->
-                            <StackPanel Spacing="6" IsEnabled="{Binding UseCustomSettings}">
-                                <TextBlock Text="自定义 Minecraft 启动参数 (Game Arguments)" FontSize="13" Foreground="Black"/>
-                                <TextBox Text="{Binding CustomMcArgs, Mode=TwoWay}" 
-                                        Watermark="--demo --fullscreen..." 
-                                        Height="35" 
-                                        VerticalContentAlignment="Center"/>
-                            </StackPanel>
-                            <!-- 修改版本显示名称 -->
+                            <!-- 重命名安全输入 -->
                             <StackPanel Spacing="6">
                                 <TextBlock Text="修改版本显示名称" FontSize="13" Foreground="Black"/>
-                                <TextBox Text="{Binding InstanceName}" Height="35" VerticalContentAlignment="Center"/>
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding RenameInput, Mode=TwoWay}" PlaceholderText="{Binding InstanceName, StringFormat='当前名称: {0}'}" Height="35" VerticalContentAlignment="Center"/>
+                                    <Button Grid.Column="1" Command="{Binding RenameInstanceCommand}" Margin="8,0,0,0" Height="35" Padding="15,0" Background="Transparent" BorderThickness="0" Cursor="Hand">
+                                        <Grid><Image Source="avares://SMCL/Assets/Button2.png" Stretch="Fill"/><TextBlock Text="确认重命名" FontSize="12" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Center"/></Grid>
+                                    </Button>
+                                </Grid>
                             </StackPanel>
+                            
+                            <TextBlock Text="{Binding ErrorMessage}" FontSize="12" Foreground="Black" FontWeight="Bold" TextWrapping="Wrap"/>
                         </StackPanel>
 
-                        <!-- 2. 模组管理面板 -->
+                        <!-- 2. 模组管理 -->
                         <StackPanel IsVisible="{Binding IsModManagerSelected}" Spacing="15">
                             <Grid ColumnDefinitions="*, Auto, Auto">
                                 <TextBlock Grid.Column="0" Text="模组管理" FontSize="18" FontWeight="Bold" Foreground="Black" VerticalAlignment="Center"/>
-                                
-                                <!-- 工具栏按钮 -->
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                                    <Button Click="OnAddModClick" Height="32" Padding="10,0" CornerRadius="4" Background="#EAEAEA">
-                                        <TextBlock Text="+ 添加 Mod" FontSize="12" Foreground="#333" VerticalAlignment="Center"/>
-                                    </Button>
+                                    <!-- 以下按钮可以加上 OnAddModClick 事件绑定 -->
                                     <Button Command="{Binding RefreshModsCommand}" Height="32" Padding="10,0" CornerRadius="4" Background="#EAEAEA">
                                         <TextBlock Text="🔄 刷新" FontSize="12" Foreground="#333" VerticalAlignment="Center"/>
                                     </Button>
@@ -158,43 +120,49 @@
                                 </StackPanel>
                             </Grid>
 
-                            <!-- Mod 列表视图 -->
-                            <Border Background="#20FFFFFF" CornerRadius="6" Padding="8" MinHeight="300">
-                                <Grid>
-                                    <!-- 无 Mod 时的提示 -->
-                                    <TextBlock Text="当前文件夹下无 Mod 文件，点击上方“添加 Mod”或放入 Jar 文件" 
-                                            IsVisible="{Binding !Mods.Count}"
-                                            FontSize="13" Foreground="#666" 
-                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding ErrorMessage}" FontSize="12" Foreground="#D32F2F" FontWeight="Bold"/>
 
-                                    <!-- Mod 列表 -->
+                            <!-- 模组列表 -->
+                            <Border Background="#30FFFFFF" CornerRadius="8" Padding="10" MinHeight="300" BorderBrush="#33FFFFFF" BorderThickness="1">
+                                <Grid>
+                                    <TextBlock Text="当前无 Mod 文件" IsVisible="{Binding !Mods.Count}" FontSize="14" Foreground="#555" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    
                                     <ListBox ItemsSource="{Binding Mods}" Background="Transparent" BorderThickness="0">
+                                        <ListBox.Styles>
+                                            <Style Selector="ListBoxItem">
+                                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                <Setter Property="Padding" Value="0"/>
+                                                <Setter Property="Margin" Value="0,0,0,8"/>
+                                            </Style>
+                                        </ListBox.Styles>
+                                        
                                         <ListBox.ItemTemplate>
                                             <DataTemplate x:DataType="models:ModModel">
-                                                <Border Background="#10000000" CornerRadius="4" Padding="8,4" Margin="0,2">
+                                                <Border Background="#20FFFFFF" CornerRadius="6" Padding="12,10">
                                                     <Grid ColumnDefinitions="Auto, *, Auto, Auto">
-                                                        <TextBlock Grid.Column="0" Text="🧩" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                                         
-                                                        <TextBlock Grid.Column="1" 
-                                                                Text="{Binding FileName}" 
-                                                                FontSize="13" 
-                                                                Foreground="Black" 
-                                                                VerticalAlignment="Center" 
-                                                                TextTrimming="CharacterEllipsis"/>
+                                                        <!-- 缩略图与占位图 -->
+                                                        <Border Grid.Column="0" Width="40" Height="40" CornerRadius="6" ClipToBounds="True" Background="#33000000" Margin="0,0,12,0">
+                                                            <Grid>
+                                                                <TextBlock Text="🧩" FontSize="20" VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding Icon, Converter={x:Static ObjectConverters.IsNull}}"/>
+                                                                <Image Source="{Binding Icon}" Stretch="UniformToFill"/>
+                                                            </Grid>
+                                                        </Border>
+                                                        
+                                                        <TextBlock Grid.Column="1" Text="{Binding FileName}" FontSize="14" FontWeight="SemiBold" Foreground="#222" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
 
+                                                        <!-- 启用开关：使用 Tapped 事件，防止双向绑定引发的死循环 -->
                                                         <ToggleSwitch Grid.Column="2" 
-                                                                    IsChecked="{Binding IsEnabled, Mode=TwoWay}" 
-                                                                    OnContent="已启用" 
-                                                                    OffContent="已禁用" 
-                                                                    Margin="10,0"/>
+                                                                      IsChecked="{Binding IsEnabled, Mode=TwoWay}" 
+                                                                      OnContent="已启用" OffContent="已禁用" 
+                                                                      Foreground="#333" FontWeight="Bold" Margin="10,0"/>
 
-                                                        <Button Grid.Column="3" 
-                                                                Command="{Binding $parent[UserControl].((vm:GameSettingsViewModel)DataContext).DeleteModCommand}" 
-                                                                CommandParameter="{Binding}"
-                                                                Background="Transparent" 
-                                                                Padding="5"
-                                                                ToolTip.Tip="删除 Mod">
-                                                            <TextBlock Text="🗑️" FontSize="14"/>
+                                                        <Button Grid.Column="3" Command="{Binding $parent[UserControl].((vm:GameSettingsViewModel)DataContext).DeleteModCommand}" CommandParameter="{Binding}"
+                                                                Width="32" Height="32" Padding="0" Background="Transparent" BorderThickness="0" ToolTip.Tip="删除模组" Cursor="Hand">
+                                                            <Grid>
+                                                                <Image Source="avares://SMCL/Assets/Button0.png" Stretch="Fill"/>
+                                                                <TextBlock Text="🗑️" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                            </Grid>
                                                         </Button>
                                                     </Grid>
                                                 </Border>
@@ -207,7 +175,6 @@
                     </Grid>
                 </ScrollViewer>
             </Border>
-
         </Grid>
     </Grid>
 </UserControl>

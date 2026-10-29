@@ -1,18 +1,24 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.Json; // 新增
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using SMCL.Models;
+using SMCL.Services;
 
 namespace SMCL.ViewModels
 {
-    // 新增：实例配置的数据模型
+    // 实例配置的数据模型
     public class InstanceConfigData
     {
         public bool UseCustomSettings { get; set; } = false;
@@ -28,7 +34,6 @@ namespace SMCL.ViewModels
         private static readonly Bitmap ActiveBg = new Bitmap(AssetLoader.Open(new Uri("avares://SMCL/Assets/Button1.png")));
         private static readonly Bitmap InactiveBg = new Bitmap(AssetLoader.Open(new Uri("avares://SMCL/Assets/Button0.png")));
 
-        // 错误提示信息，用于通知 View 层弹窗
         private string _errorMessage = string.Empty;
         public string ErrorMessage
         {
@@ -36,7 +41,6 @@ namespace SMCL.ViewModels
             set => SetProperty(ref _errorMessage, value);
         }
 
-        // 当前选中的版本实例名称
         private string _instanceName = "1.20.1";
         public string InstanceName
         {
@@ -45,16 +49,24 @@ namespace SMCL.ViewModels
             {
                 if (SetProperty(ref _instanceName, value))
                 {
-                    LoadInstanceConfig(); // === 新增：切换版本时加载对应配置 ===
+                    LoadInstanceConfig(); 
                     RefreshMods();
                 }
             }
         }
 
+        // --- 重命名专用属性 ---
+        private string _renameInput = string.Empty;
+        public string RenameInput
+        {
+            get => _renameInput;
+            set => SetProperty(ref _renameInput, value);
+        }
+
         public string MinecraftRoot { get; set; } = ".minecraft";
         public int VersionIsolationIndex { get; set; } = 0;
 
-        // 独立游戏配置属性
+        // --- 配置属性 ---
         private bool _useCustomSettings = false;
         public bool UseCustomSettings
         {
@@ -83,10 +95,12 @@ namespace SMCL.ViewModels
             set { if (SetProperty(ref _customMcArgs, value)) SaveInstanceConfig(); }
         }
 
-        // 模组列表集合
+        // --- 模组列表相关 ---
         public ObservableCollection<ModModel> Mods { get; } = new ObservableCollection<ModModel>();
+        private readonly ModrinthService _modrinthService = new ModrinthService();
+        private static readonly HttpClient _iconHttpClient = new HttpClient();
 
-        // 侧边栏标签页控制 (保持不变)
+        // --- 页签控制 ---
         private string _selectedTab = "GameConfig";
         public string SelectedTab
         {
@@ -99,18 +113,13 @@ namespace SMCL.ViewModels
                     OnPropertyChanged(nameof(ModManagerBtnBg));
                     OnPropertyChanged(nameof(IsGameConfigSelected));
                     OnPropertyChanged(nameof(IsModManagerSelected));
-
-                    if (value == "ModManager")
-                    {
-                        RefreshMods();
-                    }
+                    if (value == "ModManager") RefreshMods();
                 }
             }
         }
 
         public Bitmap GameConfigBtnBg => SelectedTab == "GameConfig" ? ActiveBg : InactiveBg;
         public Bitmap ModManagerBtnBg => SelectedTab == "ModManager" ? ActiveBg : InactiveBg;
-
         public bool IsGameConfigSelected => SelectedTab == "GameConfig";
         public bool IsModManagerSelected => SelectedTab == "ModManager";
 
@@ -118,108 +127,42 @@ namespace SMCL.ViewModels
         public ICommand OpenFolderCommand { get; }
         public ICommand RefreshModsCommand { get; }
         public ICommand DeleteModCommand { get; }
+        public ICommand RenameInstanceCommand { get; }
 
         public GameSettingsViewModel()
         {
-            SwitchTabCommand = new RelayCommand<string>(tab =>
-            {
-                if (tab != null) SelectedTab = tab;
-            });
-
+            SwitchTabCommand = new RelayCommand<string>(tab => { if (tab != null) SelectedTab = tab; });
+            
             OpenFolderCommand = new RelayCommand<string>(folderType =>
             {
-                string modsDir = GetModsFolderPath();
-                if (!Directory.Exists(modsDir)) Directory.CreateDirectory(modsDir);
+                string dir = folderType switch
+                {
+                    "Root" => Path.Combine(MinecraftRoot, "versions", InstanceName),
+                    "Mods" => GetModsFolderPath(),
+                    "Saves" => Path.Combine(MinecraftRoot, "versions", InstanceName, "saves"),
+                    _ => MinecraftRoot
+                };
 
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
                 try
                 {
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = modsDir,
-                        UseShellExecute = true,
-                        Verb = "open"
-                    });
+                    Process.Start(new ProcessStartInfo { FileName = dir, UseShellExecute = true, Verb = "open" });
                 }
                 catch (Exception ex) { ErrorMessage = $"无法打开文件夹: {ex.Message}"; }
             });
 
             RefreshModsCommand = new RelayCommand(RefreshMods);
             DeleteModCommand = new RelayCommand<ModModel>(DeleteMod);
+            RenameInstanceCommand = new RelayCommand(ExecuteRenameInstance);
         }
 
-        // === 新增：获取配置文件路径 ===
-        private string GetInstanceConfigPath()
-        {
-            // 无论是否隔离，实例配置都放在 versions/<版本号>/instance_settings.json
-            string versionDir = Path.Combine(MinecraftRoot, "versions", InstanceName);
-            if (!Directory.Exists(versionDir)) Directory.CreateDirectory(versionDir);
-            return Path.Combine(versionDir, "instance_settings.json");
-        }
-
-        // === 新增：加载实例配置 ===
-        public void LoadInstanceConfig()
-        {
-            string configPath = GetInstanceConfigPath();
-            if (File.Exists(configPath))
-            {
-                try
-                {
-                    string json = File.ReadAllText(configPath);
-                    var data = JsonSerializer.Deserialize<InstanceConfigData>(json);
-                    if (data != null)
-                    {
-                        _useCustomSettings = data.UseCustomSettings;
-                        _customMemory = data.CustomMemory;
-                        _customJvmArgs = data.CustomJvmArgs;
-                        _customMcArgs = data.CustomMcArgs;
-
-                        OnPropertyChanged(nameof(UseCustomSettings));
-                        OnPropertyChanged(nameof(CustomMemory));
-                        OnPropertyChanged(nameof(CustomJvmArgs));
-                        OnPropertyChanged(nameof(CustomMcArgs));
-                    }
-                }
-                catch { /* 忽略损坏的配置文件 */ }
-            }
-            else
-            {
-                // 如果不存在，重置为默认值
-                _useCustomSettings = false;
-                _customMemory = 4096;
-                _customJvmArgs = string.Empty;
-                _customMcArgs = string.Empty;
-                
-                OnPropertyChanged(nameof(UseCustomSettings));
-                OnPropertyChanged(nameof(CustomMemory));
-                OnPropertyChanged(nameof(CustomJvmArgs));
-                OnPropertyChanged(nameof(CustomMcArgs));
-            }
-        }
-
-        // === 新增：保存实例配置 ===
-        private void SaveInstanceConfig()
-        {
-            try
-            {
-                var data = new InstanceConfigData
-                {
-                    UseCustomSettings = this.UseCustomSettings,
-                    CustomMemory = this.CustomMemory,
-                    CustomJvmArgs = this.CustomJvmArgs,
-                    CustomMcArgs = this.CustomMcArgs
-                };
-                string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(GetInstanceConfigPath(), json);
-            }
-            catch { }
-        }
+        // ================= 核心：模组列表与图标加载 =================
 
         public string GetModsFolderPath()
         {
             bool isIsolated = VersionIsolationIndex == 0;
             string versionDir = Path.Combine(MinecraftRoot, "versions", InstanceName);
-            string basePath = isIsolated ? versionDir : MinecraftRoot;
-            return Path.Combine(basePath, "mods");
+            return isIsolated ? Path.Combine(versionDir, "mods") : Path.Combine(MinecraftRoot, "mods");
         }
 
         public void RefreshMods()
@@ -231,6 +174,7 @@ namespace SMCL.ViewModels
                 try { Directory.CreateDirectory(modsDir); } catch { return; }
             }
 
+            // 过滤并排序
             var files = Directory.GetFiles(modsDir, "*.*")
                 .Where(f => f.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || 
                             f.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
@@ -253,45 +197,89 @@ namespace SMCL.ViewModels
                         ToggleModState(mod);
                     }
                 };
-
+                // 【修复】不再在这里挂载事件，由 UI 直接 TwoWay 绑定
                 Mods.Add(mod);
+                _ = LoadModIconAsync(mod); 
             }
         }
 
-        private void ToggleModState(ModModel mod)
+        private bool _isToggling = false;
+
+        public void ToggleModState(ModModel mod)
+        {
+            if (_isToggling) return;
+            _isToggling = true;
+
+            string oldPath = mod.FilePath;
+            string newPath = mod.IsEnabled 
+                ? (oldPath.EndsWith(".disabled") ? oldPath.Substring(0, oldPath.Length - 9) : oldPath)
+                : (oldPath.EndsWith(".disabled") ? oldPath : oldPath + ".disabled");
+
+            if (oldPath != newPath)
+            {
+                try
+                {
+                    if (File.Exists(oldPath))
+                    {
+                        File.Move(oldPath, newPath);
+                        mod.FilePath = newPath;
+                        mod.FileName = Path.GetFileName(newPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ErrorMessage = $"修改模组状态失败（可能被游戏占用）：{ex.Message}";
+                    // 回滚状态，利用 Dispatcher 推送到下一次消息循环执行，防止同帧冲突
+                    Dispatcher.UIThread.Post(() => 
+                    {
+                        _isToggling = false;
+                        mod.IsEnabled = !mod.IsEnabled;
+                    });
+                    return; // 直接返回，交给 Post 里的 finally 类似逻辑处理
+                }
+            }
+            _isToggling = false;
+        }
+
+        private async Task LoadModIconAsync(ModModel mod)
         {
             try
             {
-                string oldPath = mod.FilePath;
-                string newPath;
-
-                if (mod.IsEnabled)
+                string sha1 = "";
+                using (var stream = File.OpenRead(mod.FilePath))
                 {
-                    newPath = oldPath.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
-                        ? oldPath.Substring(0, oldPath.Length - ".disabled".Length)
-                        : oldPath;
-                }
-                else
-                {
-                    newPath = oldPath.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
-                        ? oldPath
-                        : oldPath + ".disabled";
+                    byte[] hashBytes = SHA1.HashData(stream);
+                    sha1 = Convert.ToHexString(hashBytes).ToLower();
                 }
 
-                if (oldPath != newPath && File.Exists(oldPath))
+                string cacheDir = Path.Combine(MinecraftRoot, "cache", "mod_icons");
+                string cachePath = Path.Combine(cacheDir, $"{sha1}.png");
+
+                if (File.Exists(cachePath))
                 {
-                    File.Move(oldPath, newPath);
-                    mod.FilePath = newPath;
-                    mod.FileName = Path.GetFileName(newPath);
+                    using var fs = File.OpenRead(cachePath);
+                    var bmp = new Bitmap(fs);
+                    await Dispatcher.UIThread.InvokeAsync(() => mod.Icon = bmp);
+                    return;
+                }
+
+                var pidMap = await _modrinthService.GetIconUrlsFromHashesAsync(new List<string> { sha1 });
+                if (pidMap.TryGetValue(sha1, out var projectId) && !string.IsNullOrEmpty(projectId))
+                {
+                    string? iconUrl = await _modrinthService.GetProjectIconUrlAsync(projectId);
+                    if (!string.IsNullOrEmpty(iconUrl))
+                    {
+                        byte[] imgData = await _iconHttpClient.GetByteArrayAsync(iconUrl);
+                        Directory.CreateDirectory(cacheDir);
+                        await File.WriteAllBytesAsync(cachePath, imgData);
+
+                        using var ms = new MemoryStream(imgData);
+                        var bmp = new Bitmap(ms);
+                        await Dispatcher.UIThread.InvokeAsync(() => mod.Icon = bmp);
+                    }
                 }
             }
-            catch (Exception ex)
-            {
-                ErrorMessage = $"修改模组状态失败（游戏可能正在运行）：{ex.Message}";
-                // 如果失败，反向回滚 UI 的勾选状态
-                mod.PropertyChanged -= (s, e) => { }; // 简易防死循环
-                mod.IsEnabled = !mod.IsEnabled;
-            }
+            catch { /* 忽略图标加载错误 */ }
         }
 
         private void DeleteMod(ModModel? mod)
@@ -303,17 +291,14 @@ namespace SMCL.ViewModels
                     File.Delete(mod.FilePath);
                     Mods.Remove(mod);
                 }
-                catch (Exception ex)
-                {
-                    ErrorMessage = $"删除模组失败：{ex.Message}";
-                }
+                catch (Exception ex) { ErrorMessage = $"删除模组失败：{ex.Message}"; }
             }
         }
 
         public void AddModFile(string sourcePath)
         {
-            if (!File.Exists(sourcePath)) return;
-
+            if (!File.Exists(sourcePath) || !sourcePath.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)) return;
+            
             string modsDir = GetModsFolderPath();
             if (!Directory.Exists(modsDir)) Directory.CreateDirectory(modsDir);
 
@@ -323,10 +308,115 @@ namespace SMCL.ViewModels
                 File.Copy(sourcePath, destPath, overwrite: true);
                 RefreshMods();
             }
-            catch (Exception ex)
+            catch (Exception ex) { ErrorMessage = $"添加模组失败：{ex.Message}"; }
+        }
+
+        // ================= 重命名实例逻辑 =================
+
+        private void ExecuteRenameInstance()
+        {
+            string oldName = InstanceName;
+            string newName = RenameInput?.Trim() ?? "";
+
+            if (string.IsNullOrWhiteSpace(newName)) { ErrorMessage = "新名称不能为空！"; return; }
+            if (newName == oldName) { ErrorMessage = "新名称与原名称相同！"; return; }
+            if (newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) { ErrorMessage = "名称包含非法字符！"; return; }
+
+            string basePath = Path.Combine(MinecraftRoot, "versions");
+            string oldDir = Path.Combine(basePath, oldName);
+            string newDir = Path.Combine(basePath, newName);
+
+            if (Directory.Exists(newDir)) { ErrorMessage = "该名称已存在，请换一个！"; return; }
+            if (!Directory.Exists(oldDir)) { ErrorMessage = "找不到当前版本的文件夹！"; return; }
+
+            try
             {
-                ErrorMessage = $"添加模组失败：{ex.Message}";
+                // 1. 重命名文件夹
+                Directory.Move(oldDir, newDir);
+
+                // 2. 重命名核心 JSON
+                string oldJson = Path.Combine(newDir, $"{oldName}.json");
+                string newJson = Path.Combine(newDir, $"{newName}.json");
+                if (File.Exists(oldJson)) File.Move(oldJson, newJson);
+
+                // 3. 修改 JSON 内部 ID
+                if (File.Exists(newJson))
+                {
+                    string jsonContent = File.ReadAllText(newJson);
+                    jsonContent = System.Text.RegularExpressions.Regex.Replace(
+                        jsonContent, 
+                        $"\"id\"\\s*:\\s*\"{oldName}\"", 
+                        $"\"id\":\"{newName}\""
+                    );
+                    File.WriteAllText(newJson, jsonContent);
+                }
+
+                // 4. 更新状态和配置
+                InstanceName = newName;
+                RenameInput = string.Empty;
+                ErrorMessage = "重命名成功！请返回主界面刷新列表。";
+                
+                var config = ConfigService.Load();
+                if (config.SelectedGameVersion == oldName)
+                {
+                    config.SelectedGameVersion = newName;
+                    ConfigService.Save(config);
+                }
             }
+            catch (Exception ex) { ErrorMessage = $"重命名失败（游戏可能正在运行）：{ex.Message}"; }
+        }
+
+        // ================= 配置文件读写 =================
+
+        private string GetInstanceConfigPath()
+        {
+            string versionDir = Path.Combine(MinecraftRoot, "versions", InstanceName);
+            return Path.Combine(versionDir, "instance_settings.json");
+        }
+
+        public void LoadInstanceConfig()
+        {
+            string configPath = GetInstanceConfigPath();
+            if (File.Exists(configPath))
+            {
+                try
+                {
+                    var data = JsonSerializer.Deserialize<InstanceConfigData>(File.ReadAllText(configPath));
+                    if (data != null)
+                    {
+                        _useCustomSettings = data.UseCustomSettings;
+                        _customMemory = data.CustomMemory;
+                        _customJvmArgs = data.CustomJvmArgs;
+                        _customMcArgs = data.CustomMcArgs;
+
+                        OnPropertyChanged(nameof(UseCustomSettings));
+                        OnPropertyChanged(nameof(CustomMemory));
+                        OnPropertyChanged(nameof(CustomJvmArgs));
+                        OnPropertyChanged(nameof(CustomMcArgs));
+                    }
+                }
+                catch { }
+            }
+        }
+
+        private void SaveInstanceConfig()
+        {
+            try
+            {
+                string versionDir = Path.Combine(MinecraftRoot, "versions", InstanceName);
+                if (!Directory.Exists(versionDir)) return; // 防止意外建空文件夹
+
+                var data = new InstanceConfigData
+                {
+                    UseCustomSettings = this.UseCustomSettings,
+                    CustomMemory = this.CustomMemory,
+                    CustomJvmArgs = this.CustomJvmArgs,
+                    CustomMcArgs = this.CustomMcArgs
+                };
+                string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(GetInstanceConfigPath(), json);
+            }
+            catch { }
         }
     }
 }

@@ -119,6 +119,7 @@ namespace SMCL.ViewModels
         public ICommand NavigateGameSettingsCommand { get; }
         public ICommand NavigateAccountCommand { get; }
         public ICommand LaunchGameCommand { get; }
+        public ICommand RefreshGameVersionsCommand { get; }
 
         public MainViewModel()
         {
@@ -151,6 +152,7 @@ namespace SMCL.ViewModels
             InitializeLauncherLogs();
 
             LaunchGameCommand = new AsyncRelayCommand(LaunchGameAsync);
+            RefreshGameVersionsCommand = new AsyncRelayCommand(ScanGameVersionsAsync);
 
             DownloadVM.BackCommand = (IRelayCommand?)NavigateHomeCommand;
             DownloadVM.VersionInstalled += OnVersionInstalled;
@@ -340,9 +342,9 @@ namespace SMCL.ViewModels
             return results;
         }
 
-        private void ScanGameVersionsAsync()
+        private async Task ScanGameVersionsAsync()
         {
-            Task.Run(async () =>
+            await Task.Run(async () =>
             {
                 Log($"Refreshing Game Repository in {MinecraftRoot}...", "game.GameRepository", LogLevel.TRACE);
                 

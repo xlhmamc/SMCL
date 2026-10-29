@@ -27,13 +27,18 @@
                 <!-- 左侧主侧边栏 -->
                 <Border Grid.Column="0" Background="#409191D5" BorderBrush="#22FFFFFF" BorderThickness="0,0,1,0">
                     <DockPanel LastChildFill="True">
-                        <!-- 顶部 Logo -->
-                        <StackPanel DockPanel.Dock="Top" Margin="15,20,15,20" Orientation="Horizontal" Spacing="10">
-                            <Image Source="/Assets/Lobby_Icon_Work.png" Width="28" Height="28" VerticalAlignment="Center"/>
-                            <StackPanel Spacing="2" VerticalAlignment="Center">
-                                <TextBlock Text="SMCL" FontSize="20" FontWeight="Bold" Foreground="#2C3E50"/>
-                                <TextBlock Text="Schale Minecraft Launcher" FontSize="11" Foreground="#7F8C8D"/>
-                            </StackPanel>
+                                                <!-- 顶部 Logo -->
+                        <StackPanel DockPanel.Dock="Top" Margin="15,20,15,20" Spacing="8" HorizontalAlignment="Center">
+                            <!-- 放大 Logo：将 Height 改为 60（如果图片是横向的，可以适当调整到 50-70 之间） -->
+                            <!-- 如果需要等比例缩放，也可以改用 Width="180" -->
+                            <Image Source="avares://SMCL/Assets/SMCL_Logo.png" Height="80" HorizontalAlignment="Center"/>
+                            
+                            <!-- 小字放在下方居中 -->
+                            <TextBlock Text="Schale Minecraft Launcher" 
+                                       FontSize="12" 
+                                       FontWeight="SemiBold"
+                                       Foreground="Black" 
+                                       HorizontalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- 菜单导航按钮 -->
@@ -97,11 +102,31 @@
                             <!-- 选择游戏版本 -->
                             <StackPanel Spacing="4">
                                 <TextBlock Text="选择游戏版本" FontSize="12" Foreground="#676767"/>
-                                <ComboBox HorizontalAlignment="Stretch" 
-                                        PlaceholderText="请选择游戏版本" 
-                                        Width="300"
-                                        ItemsSource="{Binding GameVersions}"
-                                        SelectedItem="{Binding SelectedGameVersion}"/>
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <!-- 下拉框去掉固定宽度，让它自动撑满剩余空间 -->
+                                    <ComboBox Grid.Column="0"
+                                            HorizontalAlignment="Stretch" 
+                                            PlaceholderText="请选择游戏版本" 
+                                            ItemsSource="{Binding GameVersions}"
+                                            SelectedItem="{Binding SelectedGameVersion}"/>
+                                    
+                                    <!-- 刷新按钮 -->
+                                    <Button Grid.Column="1"
+                                            Command="{Binding RefreshGameVersionsCommand}"
+                                            Margin="8,0,0,0"
+                                            Width="32" Height="32"
+                                            Padding="0"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Cursor="Hand"
+                                            ToolTip.Tip="刷新游戏版本列表">
+                                        <Grid>
+                                            <Image Source="avares://SMCL/Assets/Button1.png" Stretch="Fill"/>
+                                            <TextBlock Text="🔄" FontSize="14" 
+                                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        </Grid>
+                                    </Button>
+                                </Grid>
                             </StackPanel>
 
                             <!-- 选择 Java 版本 + 当前版本高亮提示 -->

@@ -7,6 +7,9 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using SMCL.Models;
+using System.Text;
+using System.Security.Cryptography;
+using System.IO;
 
 namespace SMCL.Services
 {
@@ -204,6 +207,100 @@ namespace SMCL.Services
                 }
             }
             return version;
+        }
+
+        public async Task<HashSet<string>> GetLocalProjectIdsAsync(string modsDir)
+        {
+            var projectIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (!Directory.Exists(modsDir)) return projectIds;
+
+            var jarFiles = Directory.GetFiles(modsDir, "*.jar");
+            if (jarFiles.Length == 0) return projectIds;
+
+            var hashList = new List<string>();
+            
+            foreach (var file in jarFiles)
+            {
+                try
+                {
+                    using var stream = File.OpenRead(file);
+                    byte[] hashBytes = SHA1.HashData(stream);
+                    string hash = Convert.ToHexString(hashBytes).ToLower();
+                    hashList.Add(hash);
+                }
+                catch { }
+            }
+
+            if (hashList.Count == 0) return projectIds;
+
+            try
+            {
+                // 构造 POST 请求体：{"hashes": ["...", "..."], "algorithm": "sha1"}
+                var requestBody = new { hashes = hashList, algorithm = "sha1" };
+                var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+                
+                var response = await _httpClient.PostAsync("https://api.modrinth.com/v2/version_files", content);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                
+                // 返回结果是一个字典，键是 SHA1，值是版本信息
+                foreach (var prop in doc.RootElement.EnumerateObject())
+                {
+                    if (prop.Value.TryGetProperty("project_id", out var pid))
+                    {
+                        projectIds.Add(pid.GetString() ?? "");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Modrinth] 扫描本地模组失败: {ex.Message}");
+            }
+
+            return projectIds;
+        }
+
+        public async Task<Dictionary<string, string>> GetIconUrlsFromHashesAsync(List<string> hashes)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (hashes.Count == 0) return result;
+
+            try
+            {
+                var requestBody = new { hashes = hashes, algorithm = "sha1" };
+                var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+                
+                var response = await _httpClient.PostAsync("https://api.modrinth.com/v2/version_files", content);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                
+                foreach (var prop in doc.RootElement.EnumerateObject())
+                {
+                    if (prop.Value.TryGetProperty("project_id", out var pid))
+                    {
+                        // 其实这里拿不到直接的 IconUrl，需要再查一次 project
+                        // 为了速度，我们暂存 ProjectId，后续请求 project 详情
+                        result[prop.Name] = pid.GetString() ?? ""; 
+                    }
+                }
+            }
+            catch { }
+            return result;
+        }
+
+        public async Task<string?> GetProjectIconUrlAsync(string projectId)
+        {
+            try
+            {
+                var response = await _httpClient.GetStringAsync($"https://api.modrinth.com/v2/project/{projectId}");
+                using var doc = JsonDocument.Parse(response);
+                return doc.RootElement.GetProperty("icon_url").GetString();
+            }
+            catch { return null; }
         }
     }
 }

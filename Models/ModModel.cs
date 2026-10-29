@@ -1,8 +1,10 @@
+using Avalonia.Media.Imaging;
+using CommunityToolkit.Mvvm.ComponentModel;
 using SMCL.ViewModels;
 
 namespace SMCL.Models
 {
-    public class ModModel : ViewModelBase
+    public partial class ModModel : ViewModelBase
     {
         private string _fileName = string.Empty;
         public string FileName
@@ -24,5 +26,8 @@ namespace SMCL.Models
             get => _isEnabled;
             set => SetProperty(ref _isEnabled, value);
         }
+
+        [ObservableProperty]
+        private Bitmap? _icon;
     }
 }
