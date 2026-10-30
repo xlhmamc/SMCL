@@ -188,7 +188,7 @@
                                                     BorderBrush="#33FFFFFF" 
                                                     CornerRadius="6" 
                                                     Padding="10,8"/>
-                                            <TextBlock Text="Fabric/原版支持自定义目录名；Forge 由安装器命名。Fabric 名称不能与基础版本（如 1.20.1）相同。"
+                                            <TextBlock Text="Fabric/原版/Forge 均支持自定义目录名；留空使用默认名称。名称不能与基础版本（如 1.20.1）相同。"
                                                        FontSize="11" Foreground="#555" TextWrapping="Wrap"/>
                                             <TextBlock Text="{Binding InstanceNameError}"
                                                        IsVisible="{Binding HasInstanceNameError}"

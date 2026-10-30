@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SMCL")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c711e7fe770d475da9a289d72635e497ea649a26")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6d5867fe9272f4f23360406c16821867e513fac9")]
 [assembly: System.Reflection.AssemblyProductAttribute("SMCL")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SMCL")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

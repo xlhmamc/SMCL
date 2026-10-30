@@ -1,13 +1,24 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace SMCL.Services
 {
+    /// <summary>
+    /// 实例所属的模组加载器类型，用于同名实例覆盖校验。
+    /// </summary>
+    public enum InstanceLoaderKind
+    {
+        Vanilla,
+        Fabric,
+        Forge
+    }
     /// <summary>
     /// 游戏实例（versions/&lt;name&gt;）命名校验与创建辅助。
     ///
@@ -31,13 +42,42 @@ namespace SMCL.Services
         };
 
         /// <summary>
+        /// 只校验名称本身（非法字符、Windows 保留名、基础版本冲突），不检查目录是否已存在。
+        /// 用于 Forge 这类“默认目录名需要下载安装器后才能确定”的场景，先提前拦截明显错误。
+        /// </summary>
+        public static bool ValidateNameOnly(
+            string? requestedName,
+            string baseGameVersion,
+            InstanceLoaderKind loaderKind,
+            out string? error)
+        {
+            error = null;
+            string candidate = (requestedName ?? string.Empty).Trim();
+
+            if (candidate.Length == 0)
+                return true; // 留空 = 使用默认名称，合法
+
+            if (!IsValidName(candidate, out error))
+                return false;
+
+            if (loaderKind != InstanceLoaderKind.Vanilla &&
+                string.Equals(candidate, baseGameVersion, StringComparison.OrdinalIgnoreCase))
+            {
+                error = $"实例名称不能与基础游戏版本“{baseGameVersion}”相同，否则会覆盖原版版本目录。请换一个名称。";
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// 解析最终的实例名称。
         /// </summary>
         /// <param name="requestedName">用户输入的名称；为空时使用默认名称</param>
         /// <param name="defaultName">加载器/原版的默认版本目录名</param>
         /// <param name="baseGameVersion">基础 Minecraft 版本（如 1.20.1）</param>
         /// <param name="versionsRoot">&lt;MinecraftRoot&gt;/versions</param>
-        /// <param name="isFabricInstance">是否 Fabric 实例；Fabric 不能与基础版目录同名</param>
+        /// <param name="loaderKind">实例的加载器类型</param>
         /// <param name="finalName">最终使用的目录名</param>
         /// <param name="error">校验失败原因</param>
         public static bool TryResolve(
@@ -45,7 +85,7 @@ namespace SMCL.Services
             string defaultName,
             string baseGameVersion,
             string versionsRoot,
-            bool isFabricInstance,
+            InstanceLoaderKind loaderKind,
             out string finalName,
             out string? error)
         {
@@ -65,9 +105,9 @@ namespace SMCL.Services
                 return false;
             }
 
-            // Fabric 的版本 JSON 依赖 versions/1.20.1 作为 inheritsFrom 父版本，
+            // Fabric/Forge 的版本 JSON 依赖 versions/1.20.1 作为 inheritsFrom 父版本，
             // 若允许自定义名等于基础版本，会覆盖原版目录，必须拒绝。
-            if (isFabricInstance &&
+            if (loaderKind != InstanceLoaderKind.Vanilla &&
                 string.Equals(candidate, baseGameVersion, StringComparison.OrdinalIgnoreCase))
             {
                 finalName = candidate;
@@ -80,7 +120,7 @@ namespace SMCL.Services
                 !string.Equals(candidate, defaultName, StringComparison.Ordinal))
             {
                 // 同名目录存在时，只有它继承自同一个基础版本、且加载器类型一致时才允许覆盖（便于重装/修复）
-                if (!CanOverwriteExistingInstance(targetDir, candidate, baseGameVersion, isFabricInstance))
+                if (!CanOverwriteExistingInstance(targetDir, candidate, baseGameVersion, loaderKind))
                 {
                     finalName = candidate;
                     error = $"实例名称已存在：versions/{candidate}（不是基于 Minecraft {baseGameVersion} 的同类实例）。" +
@@ -115,11 +155,86 @@ namespace SMCL.Services
             await File.WriteAllTextAsync(jsonPath, json, cancellationToken);
         }
 
+        /// <summary>
+        /// 重命名一个已安装的版本目录（主要用于 Forge 安装器生成固定名称后改名）：
+        /// 1. 目录内的 <c>&lt;old&gt;.json</c> 重命名为 <c>&lt;new&gt;.json</c> 并同步改写 id；
+        /// 2. 若存在 <c>&lt;old&gt;.jar</c> 一并重命名；
+        /// 3. 最后重命名目录本身。
+        /// </summary>
+        public static async Task RenameVersionDirectoryAsync(
+            string versionsRoot,
+            string oldName,
+            string newName,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.Equals(oldName, newName, StringComparison.Ordinal))
+                return;
+
+            string oldDir = Path.Combine(versionsRoot, oldName);
+            string newDir = Path.Combine(versionsRoot, newName);
+
+            if (!Directory.Exists(oldDir))
+                throw new DirectoryNotFoundException($"未找到要重命名的实例目录：versions/{oldName}");
+
+            if (Directory.Exists(newDir))
+                throw new IOException($"目标实例名已存在：versions/{newName}");
+
+            string oldJson = Path.Combine(oldDir, $"{oldName}.json");
+            string newJson = Path.Combine(oldDir, $"{newName}.json");
+            string oldJar = Path.Combine(oldDir, $"{oldName}.jar");
+            string newJar = Path.Combine(oldDir, $"{newName}.jar");
+
+            bool jsonRenamed = false;
+            bool jarRenamed = false;
+
+            try
+            {
+                if (File.Exists(oldJson))
+                {
+                    File.Move(oldJson, newJson);
+                    jsonRenamed = true;
+                    RewriteVersionJsonId(newJson, newName);
+                }
+
+                if (File.Exists(oldJar))
+                {
+                    File.Move(oldJar, newJar);
+                    jarRenamed = true;
+                }
+
+                await Task.Run(() => Directory.Move(oldDir, newDir), cancellationToken);
+            }
+            catch
+            {
+                // 回滚已完成的文件重命名，避免目录名与 JSON 文件名不一致
+                try { if (jsonRenamed && File.Exists(newJson) && !File.Exists(oldJson)) File.Move(newJson, oldJson); } catch { /* 忽略 */ }
+                try { if (jarRenamed && File.Exists(newJar) && !File.Exists(oldJar)) File.Move(newJar, oldJar); } catch { /* 忽略 */ }
+                throw;
+            }
+        }
+
+        private static void RewriteVersionJsonId(string jsonPath, string newId)
+        {
+            try
+            {
+                string json = File.ReadAllText(jsonPath);
+                if (JsonNode.Parse(json) is JsonObject root)
+                {
+                    root["id"] = newId;
+                    File.WriteAllText(jsonPath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[InstanceNameService] 改写版本 JSON id 失败 {jsonPath}: {ex.Message}");
+            }
+        }
+
         private static bool CanOverwriteExistingInstance(
             string targetDir,
             string targetName,
             string baseGameVersion,
-            bool isFabricInstance)
+            InstanceLoaderKind loaderKind)
         {
             string jsonPath = Path.Combine(targetDir, $"{targetName}.json");
             if (!File.Exists(jsonPath)) return false;
@@ -158,8 +273,11 @@ namespace SMCL.Services
                     }
                 }
 
-                if (isFabricInstance)
+                if (loaderKind == InstanceLoaderKind.Fabric)
                     return hasFabricLoader;
+
+                if (loaderKind == InstanceLoaderKind.Forge)
+                    return hasForgeLoader;
 
                 // 原版别名实例：不应覆盖 Fabric/Forge/Quilt 实例
                 return !hasFabricLoader && !hasForgeLoader && !hasQuiltLoader;

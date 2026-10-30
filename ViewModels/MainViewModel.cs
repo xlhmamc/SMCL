@@ -7,6 +7,7 @@ using System.IO;
 using System.IO.Compression; // 新增：用于安全解压 Native 动态库
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -71,7 +72,7 @@ namespace SMCL.ViewModels
                     Log($"Changed game root directory: {value}", "game.GameRepository", LogLevel.INFO);
                     _config.MinecraftRoot = value;
                     SaveConfiguration();
-                    ScanGameVersionsAsync();
+                    _ = ScanGameVersionsAsync();
                 }
             }
         }
@@ -149,6 +150,9 @@ namespace SMCL.ViewModels
 
             SettingsVM.PropertyChanged += OnSettingsPropertyChanged;
 
+            // 把下载/Forge 安装服务的详细日志同步到启动器日志面板
+            LogService.MessageLogged += (source, message, level) => Log(message, source, level);
+
             InitializeLauncherLogs();
 
             LaunchGameCommand = new AsyncRelayCommand(LaunchGameAsync);
@@ -174,6 +178,7 @@ namespace SMCL.ViewModels
             Log($"Operating System: {SystemInfoService.GetOSVersion()}", "Launcher.main", LogLevel.INFO);
             Log($"System Architecture: {SystemInfoService.GetArchitecture()}", "Launcher.main", LogLevel.INFO);
             Log($"Current Directory: {Environment.CurrentDirectory}", "Launcher.main", LogLevel.INFO);
+            Log($"Forge/安装详细日志: {LogService.LogFilePath}", "launcher.Core", LogLevel.INFO);
 
             Log("System Info:", "util.platform.SystemInfo.initialize", LogLevel.INFO);
             Log($" - CPU Cores: {Environment.ProcessorCount} Threads", "", LogLevel.INFO);
@@ -207,7 +212,7 @@ namespace SMCL.ViewModels
                     }
                 });
 
-                ScanGameVersionsAsync();
+                await ScanGameVersionsAsync();
             });
         }
 
@@ -589,13 +594,18 @@ namespace SMCL.ViewModels
         }
 
         #region 智能解析版本继承、启动主类与依赖库（已修复跨平台架构不匹配与动态库解压Bug）
-        private (string mainClass, string assetIndex, string? parentJarPath, List<string> libraryPaths) ResolveVersionInfo(string versionDir, string gameVersion, string nativesDir)
+        private (string mainClass, string assetIndex, string? parentJarPath, List<string> libraryPaths,
+                 List<string> extraJvmArgs, List<string> extraGameArgs, bool suppressParentJar)
+            ResolveVersionInfo(string versionDir, string gameVersion, string nativesDir)
         {
             string mainClass = "net.minecraft.client.main.Main";
             string assetIndex = gameVersion;
             string? parentJarPath = null;
             string? inheritsFrom = null;
+            bool suppressParentJar = false;
             var libraryPaths = new List<string>();
+            var extraJvmArgs = new List<string>();
+            var extraGameArgs = new List<string>();
 
             string jsonPath = Path.Combine(versionDir, $"{gameVersion}.json");
 
@@ -614,6 +624,17 @@ namespace SMCL.ViewModels
                     {
                         string? mc = mcElement.GetString();
                         if (!string.IsNullOrEmpty(mc)) mainClass = mc;
+                    }
+
+                    // Forge/NeoForge 的 BootstrapLauncher 会自己从 libraries 加载 patched client；
+                    // 旧版 Forge 的 LaunchWrapper 使用版本目录内的 patched jar。
+                    // 这两种情况都不能再把原版父 Jar 放进 classpath，否则模块系统会出现
+                    // "Module minecraft contains package ... module _1._20._1 exports ..." 冲突。
+                    if (isCurrentVersion &&
+                        (mainClass.Contains("bootstraplauncher", StringComparison.OrdinalIgnoreCase) ||
+                         mainClass.Contains("launchwrapper", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        suppressParentJar = true;
                     }
 
                     if (root.TryGetProperty("assetIndex", out var aiElement) && aiElement.TryGetProperty("id", out var idElement))
@@ -661,6 +682,14 @@ namespace SMCL.ViewModels
                             }
 
                             string? name = lib.TryGetProperty("name", out var nameElem) ? nameElem.GetString() : null;
+
+                            if (isCurrentVersion && name != null &&
+                                (name.StartsWith("net.minecraftforge:fmlloader", StringComparison.Ordinal) ||
+                                 name.StartsWith("cpw.mods:bootstraplauncher", StringComparison.Ordinal) ||
+                                 name.StartsWith("net.neoforged:fmlloader", StringComparison.Ordinal)))
+                            {
+                                suppressParentJar = true;
+                            }
                             
                             // 2. 严密判定是否为 Native 动态库
                             bool hasNativesProp = lib.TryGetProperty("natives", out var nativesElem);
@@ -770,6 +799,72 @@ namespace SMCL.ViewModels
                             }
                         }
                     }
+
+                    // 仅从“当前版本”JSON 收集加载器自定义参数（Forge 的 --add-opens / -p / --launchTarget 等）。
+                    // 原版父版本的参数由启动器自己构建，避免重复。
+                    bool isModdedProfile = isCurrentVersion &&
+                        (!string.IsNullOrEmpty(inheritsFrom) ||
+                         !string.Equals(mainClass, "net.minecraft.client.main.Main", StringComparison.Ordinal));
+
+                    if (isModdedProfile)
+                    {
+                        if (root.TryGetProperty("arguments", out var argumentsElem) &&
+                            argumentsElem.ValueKind == JsonValueKind.Object)
+                        {
+                            if (argumentsElem.TryGetProperty("jvm", out var jvmElem) &&
+                                jvmElem.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var item in jvmElem.EnumerateArray())
+                                {
+                                    if (item.ValueKind != JsonValueKind.String) continue;
+                                    string? value = item.GetString();
+                                    if (!string.IsNullOrEmpty(value)) extraJvmArgs.Add(value);
+                                }
+                            }
+
+                            if (argumentsElem.TryGetProperty("game", out var gameElem) &&
+                                gameElem.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var item in gameElem.EnumerateArray())
+                                {
+                                    if (item.ValueKind == JsonValueKind.String)
+                                    {
+                                        string? value = item.GetString();
+                                        if (!string.IsNullOrEmpty(value)) extraGameArgs.Add(value);
+                                        continue;
+                                    }
+
+                                    if (item.ValueKind != JsonValueKind.Object ||
+                                        !IsJsonArgumentAllowed(item) ||
+                                        !item.TryGetProperty("value", out var valueElem))
+                                    {
+                                        continue;
+                                    }
+
+                                    if (valueElem.ValueKind == JsonValueKind.String)
+                                    {
+                                        string? value = valueElem.GetString();
+                                        if (!string.IsNullOrEmpty(value)) extraGameArgs.Add(value);
+                                    }
+                                    else if (valueElem.ValueKind == JsonValueKind.Array)
+                                    {
+                                        foreach (var v in valueElem.EnumerateArray())
+                                        {
+                                            if (v.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(v.GetString()))
+                                                extraGameArgs.Add(v.GetString()!);
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 旧版 Forge（1.12.2 及更早）使用 minecraftArguments 单字符串
+                            if (root.TryGetProperty("minecraftArguments", out var legacyArgsElem) &&
+                                legacyArgsElem.ValueKind == JsonValueKind.String)
+                            {
+                                extraGameArgs.AddRange(SplitArgumentString(legacyArgsElem.GetString() ?? string.Empty));
+                            }
+                        }
+                    }
                 }
                 catch { }
             }
@@ -781,10 +876,13 @@ namespace SMCL.ViewModels
                 string parentJsonPath = Path.Combine(MinecraftRoot, "versions", inheritsFrom, $"{inheritsFrom}.json");
                 ParseJson(parentJsonPath, false);
 
-                string pJar = Path.Combine(MinecraftRoot, "versions", inheritsFrom, $"{inheritsFrom}.jar");
-                if (File.Exists(pJar))
+                if (!suppressParentJar)
                 {
-                    parentJarPath = pJar;
+                    string pJar = Path.Combine(MinecraftRoot, "versions", inheritsFrom, $"{inheritsFrom}.jar");
+                    if (File.Exists(pJar))
+                    {
+                        parentJarPath = pJar;
+                    }
                 }
             }
             else
@@ -801,7 +899,84 @@ namespace SMCL.ViewModels
                 }
             }
 
-            return (mainClass, assetIndex, parentJarPath, libraryPaths);
+            return (mainClass, assetIndex, parentJarPath, libraryPaths, extraJvmArgs, extraGameArgs, suppressParentJar);
+        }
+
+        /// <summary>
+        /// 判断版本 JSON arguments 中带 rules 的条件参数是否允许在当前平台使用。
+        /// </summary>
+        private static bool IsJsonArgumentAllowed(JsonElement arg)
+        {
+            if (!arg.TryGetProperty("rules", out var rules) || rules.ValueKind != JsonValueKind.Array)
+                return true;
+
+            bool allowed = false;
+            foreach (var rule in rules.EnumerateArray())
+            {
+                string action = rule.TryGetProperty("action", out var actionElem)
+                    ? actionElem.GetString() ?? "allow"
+                    : "allow";
+
+                bool matches = true;
+
+                if (rule.TryGetProperty("os", out var osElem))
+                {
+                    string osName = osElem.TryGetProperty("name", out var osNameElem)
+                        ? osNameElem.GetString() ?? string.Empty
+                        : string.Empty;
+
+                    matches = (osName == "linux" && RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) ||
+                              (osName == "windows" && RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) ||
+                              (osName == "osx" && RuntimeInformation.IsOSPlatform(OSPlatform.OSX));
+
+                    if (osElem.TryGetProperty("arch", out var archElem))
+                    {
+                        string archName = archElem.GetString() ?? string.Empty;
+                        string currentArch = RuntimeInformation.OSArchitecture == Architecture.X64 ? "x86_64" : "x86";
+                        matches &= string.Equals(archName, currentArch, StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+
+                if (action == "allow" && matches) allowed = true;
+                else if (action == "disallow" && matches) allowed = false;
+            }
+
+            return allowed;
+        }
+
+        /// <summary>
+        /// 拆分旧版 minecraftArguments 字符串（支持简单的双引号包裹）。
+        /// </summary>
+        private static List<string> SplitArgumentString(string text)
+        {
+            var result = new List<string>();
+            var current = new StringBuilder();
+            bool inQuotes = false;
+
+            foreach (char c in text)
+            {
+                if (c == '"')
+                {
+                    inQuotes = !inQuotes;
+                    continue;
+                }
+
+                if (char.IsWhiteSpace(c) && !inQuotes)
+                {
+                    if (current.Length > 0)
+                    {
+                        result.Add(current.ToString());
+                        current.Clear();
+                    }
+                    continue;
+                }
+
+                current.Append(c);
+            }
+
+            if (current.Length > 0) result.Add(current.ToString());
+
+            return result;
         }
 
         /// <summary>
@@ -1059,12 +1234,25 @@ namespace SMCL.ViewModels
 
                     // 核心修复：传入 nativesDir 并在解析时自动解压与跨平台过滤
                     // 必须传入 versionDir, SelectedGameVersion, nativesDir 三个参数
-                    var (mainClass, resolvedAssetIndex, parentJarPath, libraryPaths) = ResolveVersionInfo(launchVersionDir, SelectedGameVersion, nativesDir);
+                    var (mainClass, resolvedAssetIndex, parentJarPath, libraryPaths, extraJvmArgs, extraGameArgs, suppressParentJar) =
+                        ResolveVersionInfo(launchVersionDir, SelectedGameVersion, nativesDir);
 
                     EnsureLwjglNativesAsync().GetAwaiter().GetResult();
                     ForceExtractNatives(nativesDir);
                     var cpList = new List<string>();
-                    if (!string.IsNullOrEmpty(parentJarPath) && File.Exists(parentJarPath)) cpList.Add(parentJarPath);
+
+                    if (suppressParentJar)
+                    {
+                        // Forge/NeoForge：patched client 已包含原版类，再加入原版父 Jar 会导致
+                        // "Module minecraft contains package ... module _1._20._1 exports ..." 模块冲突
+                        Log("> 已抑制原版父 Jar（Forge/NeoForge patched client 已包含游戏类）",
+                            "launcher.ProcessBuilder", LogLevel.INFO);
+                    }
+                    else if (!string.IsNullOrEmpty(parentJarPath) && File.Exists(parentJarPath))
+                    {
+                        cpList.Add(parentJarPath);
+                    }
+
                     if (File.Exists(clientJar)) cpList.Add(clientJar);
 
                     // 严格使用过滤后的合法依赖库，彻底移除危险的全局无脑扫描降级逻辑
@@ -1077,6 +1265,90 @@ namespace SMCL.ViewModels
                     
                     // === 修改点 1：不再给每个路径加引号，直接拼接 ===
                     string classPath = string.Join(separator, cpList);
+
+                    // 版本 JSON 参数占位符解析
+                    string libraryDirectory = Path.Combine(MinecraftRoot, "libraries");
+                    var placeholderValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["${natives_directory}"] = nativesDir,
+                        ["${launcher_name}"] = "SMCL",
+                        ["${launcher_version}"] = "1.0.0",
+                        ["${classpath}"] = classPath,
+                        ["${classpath_separator}"] = separator,
+                        ["${library_directory}"] = libraryDirectory,
+                        ["${version_name}"] = SelectedGameVersion ?? string.Empty,
+                        ["${game_directory}"] = launchGameDir,
+                        ["${assets_root}"] = assetsDir,
+                        ["${assets_index_name}"] = resolvedAssetIndex,
+                        ["${auth_player_name}"] = account.Username,
+                        ["${auth_uuid}"] = userUuid,
+                        ["${auth_access_token}"] = accessToken,
+                        ["${user_type}"] = userType,
+                        ["${version_type}"] = "SMCL_Launcher"
+                    };
+
+                    string ResolvePlaceholders(string value)
+                    {
+                        foreach (var pair in placeholderValues)
+                            value = value.Replace(pair.Key, pair.Value, StringComparison.OrdinalIgnoreCase);
+                        return value;
+                    }
+
+                    // Forge 需要的 JVM 参数（--add-opens / -p / --add-modules / -DignoreList 等）
+                    var resolvedJvmArgs = new List<string>();
+                    for (int i = 0; i < extraJvmArgs.Count; i++)
+                    {
+                        string arg = ResolvePlaceholders(extraJvmArgs[i]);
+
+                        // 启动器自己会构建 -cp 和 -Djava.library.path
+                        if (arg == "-cp" || arg == "-classpath")
+                        {
+                            i++; // 跳过紧随其后的 classpath 值
+                            continue;
+                        }
+
+                        if (arg.StartsWith("-Djava.library.path=", StringComparison.Ordinal))
+                            continue;
+
+                        resolvedJvmArgs.Add(arg);
+                    }
+
+                    // Forge 需要的游戏参数（--launchTarget / --fml.* 等），过滤掉启动器已手动添加的原版参数
+                    var vanillaValueOptions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        "--username", "--version", "--gameDir", "--assetsDir", "--assetIndex",
+                        "--uuid", "--accessToken", "--userType", "--versionType", "--clientId",
+                        "--xuid", "--userProperties", "--profileProperties", "--width", "--height",
+                        "--server", "--port", "--quickPlayPath", "--quickPlaySingleplayer",
+                        "--quickPlayMultiplayer", "--quickPlayRealms"
+                    };
+                    var vanillaFlagOptions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        "--demo", "--fullscreen"
+                    };
+
+                    var resolvedGameArgs = new List<string>();
+                    for (int i = 0; i < extraGameArgs.Count; i++)
+                    {
+                        string arg = ResolvePlaceholders(extraGameArgs[i]);
+
+                        if (vanillaValueOptions.Contains(arg))
+                        {
+                            i++; // 跳过参数值
+                            continue;
+                        }
+
+                        if (vanillaFlagOptions.Contains(arg))
+                            continue;
+
+                        resolvedGameArgs.Add(arg);
+                    }
+
+                    if (resolvedJvmArgs.Count > 0 || resolvedGameArgs.Count > 0)
+                    {
+                        Log($"> 版本附加参数: JVM {resolvedJvmArgs.Count} 个, Game {resolvedGameArgs.Count} 个 (mainClass={mainClass})",
+                            "launcher.ProcessBuilder", LogLevel.INFO);
+                    }
 
                     string jvmArgsInput = GameSettingsVM.UseCustomSettings
                         ? GameSettingsVM.CustomJvmArgs
@@ -1093,6 +1365,9 @@ namespace SMCL.ViewModels
                     {
                         argList.AddRange(jvmArgsInput.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
                     }
+
+                    // 2.5 Forge/加载器 JVM 参数（--add-opens / -p / --add-modules，必须在主类之前）
+                    argList.AddRange(resolvedJvmArgs);
 
                     // 3. 库路径和 ClassPath（绝对不要带双引号，ArgumentList 会处理转义）
                     argList.Add($"-Djava.library.path={nativesDir}");
@@ -1113,7 +1388,10 @@ namespace SMCL.ViewModels
                     argList.Add("--userType"); argList.Add(userType);
                     argList.Add("--versionType"); argList.Add("SMCL_Launcher");
 
-                    // 6. 自定义游戏参数 (按空格拆分)
+                    // 6. 版本 JSON 声明的游戏参数（Forge: --launchTarget forgeclient / --fml.*）
+                    argList.AddRange(resolvedGameArgs);
+
+                    // 7. 自定义游戏参数 (按空格拆分)
                     if (GameSettingsVM.UseCustomSettings && !string.IsNullOrWhiteSpace(GameSettingsVM.CustomMcArgs))
                     {
                         argList.AddRange(GameSettingsVM.CustomMcArgs.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
@@ -1178,7 +1456,7 @@ namespace SMCL.ViewModels
             // 安装完成后立即刷新版本列表并选中新实例，无需重启启动器
             _config.SelectedGameVersion = versionName;
             SaveConfiguration();
-            ScanGameVersionsAsync();
+            _ = ScanGameVersionsAsync();
         }
 
         private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -1202,7 +1480,7 @@ namespace SMCL.ViewModels
             {
                 _config.HideInheritedVanilla = SettingsVM.HideInheritedVanilla;
                 SaveConfiguration();
-                ScanGameVersionsAsync();
+                _ = ScanGameVersionsAsync();
             }
         }
 

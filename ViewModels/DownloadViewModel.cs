@@ -21,6 +21,10 @@ namespace SMCL.ViewModels
     {
         private readonly DownloadService _downloadService = new DownloadService();
         private readonly ModService _modService = new ModService();
+        private readonly ForgeInstallerService _forgeInstallerService = new();
+
+        // Forge 版本字符串 -> BMCLAPI 的 build 号（用于安装器下载镜像）
+        private readonly Dictionary<string, long> _forgeBuildByVersion = new(StringComparer.OrdinalIgnoreCase);
         private readonly ModrinthService _modrinthService = new ModrinthService();
 
         public event Action<string>? VersionInstalled;
@@ -305,6 +309,7 @@ namespace SMCL.ViewModels
         private async Task LoadLoaderVersionsAsync(string loader, string mcVersion)
         {
             LoaderVersions.Clear();
+            _forgeBuildByVersion.Clear();
             SelectedLoaderVersion = null;
             StatusText = $"正在获取 {loader} 版本列表...";
 
@@ -324,12 +329,44 @@ namespace SMCL.ViewModels
                 else if (loader == "Forge")
                 {
                     string url = $"https://bmclapi2.bangbang93.com/forge/minecraft/{mcVersion}";
+                    LogService.Info("forge.list", $"获取 Forge 版本列表: {url}");
+
                     string json = await HttpClient.GetStringAsync(url);
+                    LogService.Info("forge.list", $"响应长度: {json.Length} 字符");
+
                     using var doc = JsonDocument.Parse(json);
+
+                    var forgeEntries = new List<(string Version, long Build)>();
                     foreach (var item in doc.RootElement.EnumerateArray())
                     {
-                        if (item.TryGetProperty("version", out var v))
-                            LoaderVersions.Add(v.GetString()!);
+                        if (!item.TryGetProperty("version", out var v)) continue;
+
+                        string version = v.GetString()!;
+                        long build = 0;
+                        if (item.TryGetProperty("build", out var buildProp))
+                            buildProp.TryGetInt64(out build);
+
+                        forgeEntries.Add((version, build));
+                    }
+
+                    // BMCLAPI 返回顺序不是严格的版本顺序，按 build 降序排列，确保默认选中最新版
+                    forgeEntries.Sort((a, b) => b.Build.CompareTo(a.Build));
+
+                    foreach (var entry in forgeEntries)
+                    {
+                        LoaderVersions.Add(entry.Version);
+                        _forgeBuildByVersion[entry.Version] = entry.Build;
+                    }
+
+                    if (forgeEntries.Count > 0)
+                    {
+                        LogService.Info(
+                            "forge.list",
+                            $"共 {forgeEntries.Count} 个 Forge 版本，最新: {forgeEntries[0].Version} (build {forgeEntries[0].Build})");
+                    }
+                    else
+                    {
+                        LogService.Warn("forge.list", $"Forge {mcVersion} 版本列表为空");
                     }
                 }
 
@@ -345,6 +382,7 @@ namespace SMCL.ViewModels
             }
             catch (Exception ex)
             {
+                LogService.Error("loader.list", $"获取 {loader} 版本列表失败: {ex}");
                 StatusText = $"获取加载器版本失败: {ex.Message}";
             }
         }
@@ -365,6 +403,12 @@ namespace SMCL.ViewModels
             string baseVersion = SelectedVersion.Id;
             string? loaderVersion = SelectedLoaderVersion;
 
+            LogService.Info(
+                "install",
+                $"安装开始: MC={baseVersion}, loader={SelectedLoader}, loaderVersion={loaderVersion ?? "<默认>"}, " +
+                $"customName='{CustomInstanceName}', gameDir={gameDir}, source={config.DownloadSourceIndex}, " +
+                $"isolation={config.VersionIsolationIndex}, fabricApi={AutoInstallFabricApi}");
+
             bool isFabric = SelectedLoader == "Fabric" && !string.IsNullOrEmpty(loaderVersion);
             bool isForge = SelectedLoader == "Forge" && !string.IsNullOrEmpty(loaderVersion);
 
@@ -382,7 +426,7 @@ namespace SMCL.ViewModels
                         defaultVersionName,
                         baseVersion,
                         versionsRoot,
-                        isFabricInstance: isFabric,
+                        loaderKind: isFabric ? InstanceLoaderKind.Fabric : InstanceLoaderKind.Vanilla,
                         out finalVersionName,
                         out string? nameError))
                 {
@@ -395,6 +439,20 @@ namespace SMCL.ViewModels
 
                 createVanillaAlias = IsVanillaSelected &&
                                      !string.Equals(finalVersionName, baseVersion, StringComparison.Ordinal);
+            }
+            else if (isForge && !string.IsNullOrWhiteSpace(CustomInstanceName))
+            {
+                // Forge 的默认目录名要等下载安装器后才能确定，这里先做基础合法性校验，
+                // 避免下载完整原版后才报“名称非法”；目录冲突会在 ForgeInstallerService 内处理。
+                if (!InstanceNameService.ValidateNameOnly(
+                        CustomInstanceName, baseVersion, InstanceLoaderKind.Forge, out string? forgeNameError))
+                {
+                    InstanceNameError = forgeNameError ?? "实例名称无效，请修改后重试。";
+                    StatusText = InstanceNameError;
+                    return;
+                }
+
+                InstanceNameError = null;
             }
 
             IsDownloading = true;
@@ -429,12 +487,29 @@ namespace SMCL.ViewModels
                 }
                 else if (isForge)
                 {
-                    await InstallForgeAsync(baseVersion, loaderVersion!, gameDir, progressHandler);
+                    long? forgeBuild = _forgeBuildByVersion.TryGetValue(loaderVersion!, out long build) ? build : null;
+                    string javaPath = string.IsNullOrWhiteSpace(config.SelectedJavaPath)
+                        ? "java"
+                        : config.SelectedJavaPath;
 
-                    if (!string.IsNullOrWhiteSpace(CustomInstanceName))
-                    {
-                        extraMessage = "（Forge 的版本目录名由 Forge 安装器决定，自定义名称未应用）";
-                    }
+                    LogService.Info(
+                        "install",
+                        $"Forge 安装参数: forgeVersion={loaderVersion}, build={forgeBuild?.ToString() ?? "未知"}, java={javaPath}");
+
+                    var forgeResult = await _forgeInstallerService.InstallAsync(
+                        baseVersion,
+                        loaderVersion!,
+                        forgeBuild,
+                        config.DownloadSourceIndex,
+                        gameDir,
+                        javaPath,
+                        CustomInstanceName,
+                        progressHandler);
+
+                    installedVersionName = forgeResult.VersionName;
+                    extraMessage = forgeResult.Verified
+                        ? "（安装校验通过）"
+                        : $"（安装校验警告：{forgeResult.VerificationSummary}）";
                 }
                 else
                 {
@@ -466,6 +541,8 @@ namespace SMCL.ViewModels
                         ? $"实例 {installedVersionName} 安装完成！"
                         : $"实例 {installedVersionName} 安装完成！{extraMessage}";
 
+                    LogService.Info("install", $"安装成功: versions/{installedVersionName}");
+
                     VersionInstalled?.Invoke(installedVersionName);
                 }
                 else
@@ -477,7 +554,8 @@ namespace SMCL.ViewModels
             }
             catch (Exception ex)
             {
-                StatusText = $"安装中断: {ex.Message}";
+                LogService.Error("install", "安装中断: " + ex);
+                StatusText = $"安装中断: {ex.Message}（详细日志: {LogService.LogFilePath}）";
             }
             finally
             {
@@ -616,48 +694,6 @@ namespace SMCL.ViewModels
                     }
                 }
             }
-        }
-
-        private async Task InstallForgeAsync(string mcVersion, string forgeVersion, string gameDir, IProgress<DownloadProgressReport> progress)
-        {
-            string installerPath = Path.Combine(Path.GetTempPath(), $"forge-installer-{forgeVersion}.jar");
-
-            progress.Report(new DownloadProgressReport { CurrentFileName = "正在下载 Forge 安装器..." });
-            
-            string officialUrl = $"https://maven.minecraftforge.net/net/minecraftforge/forge/{mcVersion}-{forgeVersion}/forge-{mcVersion}-{forgeVersion}-installer.jar";
-            byte[] installerData = await HttpClient.GetByteArrayAsync(officialUrl);
-            await File.WriteAllBytesAsync(installerPath, installerData);
-
-            progress.Report(new DownloadProgressReport { CurrentFileName = "正在静默运行 Forge 安装器 (请稍候)..." });
-
-            string javaExe = "java"; 
-            var config = ConfigService.Load();
-            if (!string.IsNullOrEmpty(config.SelectedJavaPath)) javaExe = config.SelectedJavaPath;
-
-            var psi = new ProcessStartInfo
-            {
-                FileName = javaExe,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-            
-            psi.ArgumentList.Add("-jar");
-            psi.ArgumentList.Add(installerPath);
-            psi.ArgumentList.Add("--installClient");
-            psi.ArgumentList.Add(gameDir);
-
-            using var process = Process.Start(psi);
-            if (process != null)
-            {
-                await process.WaitForExitAsync();
-                if (process.ExitCode != 0)
-                    throw new Exception("Forge 安装器执行失败，可能是 Java 版本不兼容或网络问题！");
-            }
-
-            try { File.Delete(installerPath); } catch { }
-            progress.Report(new DownloadProgressReport { CurrentFileName = "Forge 安装完成" });
         }
 
         // ==========================================

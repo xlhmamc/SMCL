@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
@@ -18,7 +19,21 @@ namespace SMCL.Services
 {
     public class DownloadService
     {
-        private static readonly HttpClient HttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        // 原版客户端 Jar 可达几十 MB，30 秒超时在慢网络下会直接失败；
+        // 这里放宽到 10 分钟，同时单独限制连接超时，避免真正断网时长时间挂起。
+        private static readonly HttpClient HttpClient = CreateHttpClient();
+
+        private static HttpClient CreateHttpClient()
+        {
+            var handler = new SocketsHttpHandler
+            {
+                AutomaticDecompression = DecompressionMethods.All,
+                ConnectTimeout = TimeSpan.FromSeconds(15),
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+            };
+
+            return new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(10) };
+        }
 
                 // 移除原来的 bool UseBmclapi
         // 新增：0=BMCLAPI, 1=MCBBS备用, 2=官方源
@@ -33,8 +48,18 @@ namespace SMCL.Services
                 _ => "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json" // 官方源
             };
 
-            string json = await HttpClient.GetStringAsync(url);
-            return JsonSerializer.Deserialize<VersionManifest>(json);
+            try
+            {
+                LogService.Info("download.manifest", $"GET {url}");
+                string json = await HttpClient.GetStringAsync(url);
+                LogService.Info("download.manifest", $"版本清单下载成功，{json.Length} 字符");
+                return JsonSerializer.Deserialize<VersionManifest>(json);
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("download.manifest", $"版本清单下载失败 {url}: {ex.GetType().Name}: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task DownloadGameVersionAsync(string versionId, string versionJsonUrl, string gameDir, IProgress<DownloadProgressReport>? progress = null)
@@ -49,8 +74,15 @@ namespace SMCL.Services
             // 1. 下载并保存版本专属 JSON
             string targetJsonUrl = ReplaceMirrorUrl(versionJsonUrl);
             string jsonPath = Path.Combine(versionsDir, $"{versionId}.json");
+
+            LogService.Info(
+                "download.version",
+                $"开始下载原版 {versionId}: json={versionJsonUrl} -> {targetJsonUrl}, gameDir={gameDir}, source={DownloadSourceIndex}");
+
             string versionJsonContent = await HttpClient.GetStringAsync(targetJsonUrl);
             await File.WriteAllTextAsync(jsonPath, versionJsonContent);
+
+            LogService.Info("download.version", $"版本 JSON 已保存: {jsonPath}（{versionJsonContent.Length} 字符）");
 
             using var doc = JsonDocument.Parse(versionJsonContent);
             var root = doc.RootElement;
@@ -208,8 +240,21 @@ namespace SMCL.Services
                 throw new Exception("解析下载队列失败：没有找到任何可下载的文件项！");
             }
 
+            LogService.Info(
+                "download.version",
+                $"下载队列已构建: {downloadQueue.Count} 个文件，natives={nativesJarPaths.Count} 个");
+
             // 5. 多线程并发下载所有收集到的文件
             await BatchDownloadAsync(downloadQueue, 16, progress);
+
+            LogService.Info("download.version", $"原版 {versionId} 批量下载阶段结束");
+
+            string clientJarPath = Path.Combine(versionsDir, $"{versionId}.jar");
+            if (!File.Exists(clientJarPath))
+            {
+                throw new IOException(
+                    $"原版客户端 Jar 缺失: {clientJarPath}（详细日志: {LogService.LogFilePath}）");
+            }
 
             // 6. 核心修复 - 解压 Natives 动态库
             progress?.Report(new DownloadProgressReport { TotalFiles = 100, CompletedFiles = 99, CurrentFileName = "正在解压原生库(Natives)..." });
@@ -253,6 +298,7 @@ namespace SMCL.Services
         {
             int total = items.Count;
             int completed = 0;
+            var failures = new ConcurrentBag<string>();
             using var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
 
             var tasks = items.Select(async item =>
@@ -278,6 +324,8 @@ namespace SMCL.Services
                 }
                 catch (Exception ex)
                 {
+                    failures.Add($"{item.Url} -> {ex.GetType().Name}: {ex.Message}");
+                    LogService.Warn("download.file", $"下载失败: {item.Url} | {ex.Message}");
                     Debug.WriteLine($"[Download Error] 文件下载失败 -> URL: {item.Url}, 错误: {ex.Message}");
                     Interlocked.Increment(ref completed);
                 }
@@ -288,6 +336,13 @@ namespace SMCL.Services
             });
 
             await Task.WhenAll(tasks);
+
+            if (!failures.IsEmpty)
+            {
+                LogService.Error(
+                    "download.version",
+                    $"共有 {failures.Count} 个文件下载失败，示例: {failures.First()}");
+            }
         }
 
         // URL 替换镜像方法
