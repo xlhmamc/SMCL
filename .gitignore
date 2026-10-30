@@ -1,0 +1,7 @@
+# .gitignore 模板
+bin/
+obj/
+*.user
+*.log
+.vs/
+.vscode/
