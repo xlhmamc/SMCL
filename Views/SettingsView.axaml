@@ -160,6 +160,27 @@
                                           IsChecked="{Binding AutoCheckUpdates, Mode=TwoWay}" 
                                           Foreground="Black"/>
                             </StackPanel>
+
+                            <!-- 版本信息 / 打开 GitHub 项目主页 -->
+                            <Border Height="1" Background="#22000000" Margin="0,18,0,0"/>
+                            <Button Command="{Binding OpenRepositoryCommand}"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,6,0,0"
+                                    Width="160" Height="38"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="打开 GitHub 项目主页">
+                                <Grid>
+                                    <Image Source="avares://SMCL/Assets/Button2.png" Stretch="Fill"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <TextBlock Text="版本" FontSize="12" Foreground="#333" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding AppVersion}" FontSize="12" FontWeight="Bold" Foreground="#333" VerticalAlignment="Center"/>
+                                        <TextBlock Text="↗" FontSize="12" Foreground="#333" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>

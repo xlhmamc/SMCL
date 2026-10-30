@@ -13,6 +13,16 @@ namespace SMCL.ViewModels
         public ICommand? BackCommand { get; set; }
         public ICommand SwitchTabCommand { get; }
 
+        /// <summary>
+        /// 当前启动器版本，显示在设置页的版本按钮上。
+        /// </summary>
+        public string AppVersion => AppInfo.Version;
+
+        /// <summary>
+        /// 打开项目 GitHub 页面。
+        /// </summary>
+        public ICommand OpenRepositoryCommand { get; }
+
         #region 页面切换与按钮背景控制
         private bool _isGlobalGameSelected = true;
         public bool IsGlobalGameSelected
@@ -150,6 +160,8 @@ namespace SMCL.ViewModels
             {
                 IsGlobalGameSelected = tab == "GlobalGame";
             });
+
+            OpenRepositoryCommand = new RelayCommand(() => UrlLauncher.Open(AppInfo.RepositoryUrl));
 
             LoadSettings();
         }
