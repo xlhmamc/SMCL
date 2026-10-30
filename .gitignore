@@ -1,7 +1,60 @@
-# .gitignore 模板
-bin/
-obj/
-*.user
+## ==========================
+# .NET / C# 编译产物
+## ==========================
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
 *.log
+smcl-latest.log
+
+## ==========================
+# Visual Studio 专属文件
+## ==========================
 .vs/
-.vscode/
+*.user
+*.userosscache
+*.suo
+*.ntvs*
+*.njsproj
+*.sln.docstates
+
+## ==========================
+# VS Code 专属文件
+## ==========================
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.ionide/
+
+## ==========================
+# JetBrains Rider / IDE
+## ==========================
+.idea/
+*.iws
+*.iml
+*.ipr
+
+## ==========================
+# 操作系统生成文件
+## ==========================
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+## ==========================
+# 游戏启动器/测试本地数据 (如 .minecraft 核心隔离目录)
+## ==========================
+/.minecraft/
+/versions/
+/assets/
+/libraries/
